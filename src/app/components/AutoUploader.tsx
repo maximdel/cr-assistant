@@ -60,6 +60,8 @@ export default function AutoUploader() {
       // 4. post each new opponent encounter
       for (const b of newMatches) {
         const opp = b.opponent[0];
+        const normalized = parseBattleTime(b.battleTime).toISOString();
+
         await fetch('/api/encounters', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -67,7 +69,7 @@ export default function AutoUploader() {
             tag: opp.tag,
             name: opp.name,
             deck: opp.cards,
-            playedAt: b.battleTime,
+            playedAt: normalized,
           }),
         });
       }

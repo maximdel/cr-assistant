@@ -23,7 +23,6 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-
   // upsert opponent
   const opponent = await prisma.player.upsert({
     where: { tag },
@@ -31,12 +30,12 @@ export async function POST(req: Request) {
     create: { tag, name: name || 'Unknown' },
   });
 
-  // record the encounter with the actual battleTime
+  // save the encounter with the actual battleTime
   await prisma.encounter.create({
     data: {
       opponentId: opponent.id,
       deck,
-      playedAt: new Date(playedAt), // <— supply the required field
+      playedAt: new Date(playedAt),
     },
   });
 

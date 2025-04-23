@@ -1,8 +1,9 @@
+// src/app/api/opponents/[tag]/last/route.ts
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
 export async function GET(_req: Request, context: { params: { tag: string } }) {
-  const { tag: rawTag } = await context.params;
+  const rawTag = (await context.params).tag;
   const tag = rawTag.startsWith('#') ? rawTag : `#${rawTag}`;
 
   const opp = await prisma.player.findUnique({
@@ -20,8 +21,8 @@ export async function GET(_req: Request, context: { params: { tag: string } }) {
   }
 
   const last = opp.encounters[0];
+
   return NextResponse.json({
-    id: last.id,
     deck: last.deck,
     playedAt: last.playedAt.toISOString(),
   });
