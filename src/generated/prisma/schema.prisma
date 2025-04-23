@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Opponent {
+  id         Int         @id @default(autoincrement())
+  tag        String      @unique
+  name       String
+  lastSeen   DateTime    @updatedAt
+  encounters Encounter[]
+}
+
+model Encounter {
+  id         Int      @id @default(autoincrement())
+  opponent   Opponent @relation(fields: [opponentId], references: [id])
+  opponentId Int
+  deck       Json
+  playedAt   DateTime @default(now())
+}

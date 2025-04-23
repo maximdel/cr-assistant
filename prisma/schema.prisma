@@ -1,0 +1,50 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Preset {
+  id   Int    @id @default(autoincrement())
+  tag  String @unique
+  name String
+}
+
+model Player {
+  id         Int         @id @default(autoincrement())
+  tag        String      @unique
+  name       String
+  clan       Clan?        @relation(fields: [clanId], references: [id])
+  lastSeen   DateTime    @updatedAt
+  encounters Encounter[]
+  clanId     Int?
+}
+
+model Clan {
+  id         Int      @id @default(autoincrement())
+  tag        String   @unique
+  name       String
+  memberList Player[] @relation()
+  badgeId    Int
+}
+
+model Encounter {
+  id         Int      @id @default(autoincrement())
+  opponent   Player   @relation(fields: [opponentId], references: [id])
+  opponentId Int
+  deck       Json
+  playedAt   DateTime
+}
+
+model CardImage {
+  id      Int     @id @default(autoincrement())
+  name    String  @unique
+  iconUrl String
+  evoUrl  String?
+}

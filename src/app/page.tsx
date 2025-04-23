@@ -1,103 +1,268 @@
-import Image from "next/image";
+'use client';
+
+import { Preset } from '@prisma/client';
+import { useEffect, useRef, useState } from 'react';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [tag, setTag] = useState('');
+  const [nameInput, setNameInput] = useState('');
+  const [editingTag, setEditingTag] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // ref to focus on name field when it appears
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  // Saved playertags
+  const [presets, setPresets] = useState<Preset[]>([]);
+
+  const [player, setPlayer] = useState<any>(null);
+
+  // Loading and error states
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState<boolean>(false);
+
+  // load presets from DB
+  useEffect(() => {
+    fetch('/api/presets')
+      .then((r) => r.json())
+      .then((data: Preset[]) => setPresets(data));
+  }, []);
+
+  // when editingTag becomes non-null, focus the name input
+  useEffect(() => {
+    if (editingTag) {
+      nameRef.current?.focus();
+    }
+  }, [editingTag]);
+
+  // After clicking 'Save' button, open popup
+  const startAdd = () => {
+    const cleanedTag = tag.trim();
+    if (!cleanedTag) {
+      setError('Please specify a tag');
+      return;
+    }
+    // enter “naming mode”
+    setEditingTag(cleanedTag);
+    // reset the name field
+    setNameInput('');
+  };
+
+  // Create Preset object
+  const confirmAdd = async () => {
+    if (!editingTag) {
+      setError('Please specify a player tag');
+      return;
+    }
+    if (!nameInput.trim()) {
+      setError('Please specify a placeholder name');
+      return;
+    }
+    const res = await fetch('/api/presets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tag: editingTag, name: nameInput.trim() }),
+    });
+
+    if (!res.ok) {
+      setError('Could not save preset');
+      return;
+    }
+
+    const newPreset: Preset = await res.json();
+    setPresets((prev) => [
+      newPreset,
+      ...prev.filter((p) => p.tag !== newPreset.tag),
+    ]);
+    setEditingTag(null);
+    setTag('');
+    setNameInput('');
+  };
+
+  // Delete Preset by tag
+  const removePreset = async (tagToRemove: string) => {
+    const res = await fetch(`/api/presets/${encodeURIComponent(tagToRemove)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      setError('Could not remove preset');
+      return;
+    }
+    setPresets((prev) => prev.filter((p) => p.tag !== tagToRemove));
+  };
+
+  const fetchPlayer = async (e?: React.FormEvent, newTag?: string) => {
+    if (e) e.preventDefault();
+    setLoading(true);
+    setError('');
+    setPlayer(null);
+
+    const lookup = newTag ?? tag.trim();
+    if (!lookup) {
+      setError('Please specify a tag');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const [playerRes, chestsRes, logRes] = await Promise.all([
+        fetch(`/api/player/${encodeURIComponent(lookup)}`),
+        fetch(`/api/player/${encodeURIComponent(lookup)}/upcomingchests`),
+        fetch(`/api/player/${encodeURIComponent(lookup)}/battlelog`),
+      ]);
+
+      if (!playerRes.ok) throw new Error('Player not found 😢');
+
+      const [playerData, chestsData, logData] = await Promise.all([
+        playerRes.json(),
+        chestsRes.json(),
+        logRes.json(),
+      ]);
+
+      setPlayer({
+        ...playerData,
+        upcomingChests: chestsData,
+        battleLog: logData,
+      });
+      setTag('');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Previous version:
+
+  // const addPreset = () => {
+  //   setLoading(true);
+  //   const clean = tag.trim();
+  //   if (clean && !presets.includes(clean)) {
+  //     setPresets([clean, ...presets]);
+  //     setTag('');
+  //   }
+  //   setLoading(false);
+  // };
+
+  // const removePreset = (t: string) => {
+  //   setPresets(presets.filter((x) => x !== t));
+  // };
+  return (
+    <main className="p-8 mx-auto max-w-lg space-y-6">
+      <h1 className="text-2xl font-bold">Clash Repo</h1>
+      {error && <p className="text-red-500">{error}</p>}
+      {loading && <p className="text-blue-500">Loading…</p>}
+
+      {/* search + save form */}
+      <form onSubmit={fetchPlayer} className="flex gap-2">
+        <input
+          value={tag}
+          onChange={(e) => setTag(e.target.value)}
+          placeholder="Enter player tag"
+          className="flex-1 p-2 border rounded"
+        />
+        <button
+          type="submit"
+          className="px-4 py-2 bg-blue-500 text-white rounded"
+        >
+          Search
+        </button>
+        <button
+          type="button"
+          onClick={startAdd}
+          className="px-4 py-2 bg-green-500 text-white rounded"
+        >
+          Save
+        </button>
+      </form>
+
+      {/* inline name input & confirm */}
+      {editingTag && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            confirmAdd();
+          }}
+          className="flex gap-2 mb-4"
+        >
+          <input
+            ref={nameRef}
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            placeholder="Preset name"
+            className="flex-1 p-2 border rounded"
+          />
+          <button
+            onClick={confirmAdd}
+            className="px-4 py-2 bg-indigo-500 text-white rounded"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            Confirm
+          </button>
+        </form>
+      )}
+
+      {/* list of presets */}
+      {presets.length > 0 && (
+        <section>
+          <h2 className="font-semibold mb-2">Your Presets</h2>
+          <ul className="space-y-1">
+            {presets.map((p) => (
+              <li
+                key={p.id}
+                className="flex justify-between items-center border rounded-lg hover:bg-fuchsia-100 hover:cursor-grab"
+                onClick={() => fetchPlayer(undefined, p.tag)}
+              >
+                <span className="mx-4">
+                  <strong>{p.name}</strong> ({p.tag})
+                </span>
+                <button
+                  onClick={() => removePreset(p.tag)}
+                  className="text-red-500 mx-4 my-1"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* display fetched player info */}
+      {player && (
+        <section className="mt-6">
+          <h2 className="text-xl font-bold">
+            {player.name} ({player.tag})
+          </h2>
+          <p>Trophies: {player.trophies}</p>
+          <p>Clan: {player.clan?.name ?? 'No clan'}</p>
+
+          {player.upcomingChests && (
+            <div className="mt-4">
+              <h3 className="font-semibold">Upcoming Chests</h3>
+              <ul className="list-disc ml-6">
+                {player.upcomingChests.items.map((c: any, i: number) => (
+                  <li key={i}>
+                    {c.name} (in {c.index} games)
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {player.battleLog && (
+            <div className="mt-4">
+              <h3 className="font-semibold">Recent Battles</h3>
+              <ul className="list-disc ml-6">
+                {player.battleLog.map((b: any, i: number) => (
+                  <li key={i}>
+                    {b.team[0].name} vs {b.opponent[0].name} —{' '}
+                    {b.team[0].crowns > b.opponent[0].crowns ? 'Win' : 'Loss'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+    </main>
   );
 }
