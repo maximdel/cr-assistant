@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 export default function Header() {
@@ -31,17 +33,28 @@ export default function Header() {
   };
 
   return (
-    <div className="bg-blue-100 mx-auto space-y-4 p-6">
-      <header className="relative mx-auto mb-4 mt-8 flex w-full items-center justify-between pb-2">
+    <header className="bg-rose-950 mx-auto p-6 flex space-between">
+      <Link href="/" className="p-[0.5rem] my-auto mx-[2rem]">
+        {/* width/height are required */}
+        <Image
+          src="/favicon.ico"
+          alt="CR Assistant Logo"
+          width={120}
+          height={120}
+          priority={true} // preloads it for the LCP
+        />
+      </Link>{' '}
+      <div className="relative mx-auto mb-4 mt-8 flex w-full items-center justify-between pb-2">
         {/* nav links */}
-        <nav className="space-x-4 text-rose-100 *:p-2 *:bg-rose-500 *:rounded-xl">
-          <a href="/">Home</a>
+        <nav className="space-x-4 text-rose-100 *:p-2 *:bg-rose-500 *:rounded *:hover:bg-rose-600 *:hover:shadow-md">
+          <a href="/" className="">
+            Home
+          </a>
           <a href="/ranking">Ranking</a>
           <a href="/playing">Playing</a>
           <a href="/testing">Testing</a>
           <a href="/admin">Admin</a>
         </nav>
-
         {/* stay‑logged‑in tag input */}
         <div className="flex items-center space-x-2">
           <input
@@ -49,7 +62,7 @@ export default function Header() {
             value={draftTag}
             onChange={(e) => setDraftTag(e.target.value)}
             placeholder="#YOURTAG"
-            className="p-2 border rounded text-black"
+            className="p-2 border rounded text- bg-rose-950"
           />
           <button
             onClick={saveTag}
@@ -66,7 +79,7 @@ export default function Header() {
             </button>
           )}
         </div>
-      </header>
-    </div>
+      </div>
+    </header>
   );
 }
