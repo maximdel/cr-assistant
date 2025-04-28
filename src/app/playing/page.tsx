@@ -17,6 +17,9 @@ export default function OpponentSearch() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // When player potentially plays multiple decks
+  const [playersOtherDecks, setPlayersOtherDecks] = useState<any[]>([]);
+
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -25,7 +28,7 @@ export default function OpponentSearch() {
     }
   }, [username]);
 
-  // 1️⃣ search handler
+  // Search handler
   const onSearch = async () => {
     setLoading(true);
     setError('');
@@ -33,43 +36,63 @@ export default function OpponentSearch() {
     setMembers([]);
     setSelectedDeck(null);
 
-    // Fetch corresponding players from DB
-    const opponentRes = await fetch(
-      `/api/players?name=${encodeURIComponent(username)}`
-    );
+    let opponentRes: Response;
+
+    // Filter by name or name + clan
+    if (username && clanname) {
+      const url = new URL('/api/players', location.origin);
+      url.searchParams.set('name', username);
+      url.searchParams.set('clan', clanname);
+      opponentRes = await fetch(url.toString());
+    } else {
+      const url = new URL('/api/players', location.origin);
+      url.searchParams.set('name', username || '');
+      opponentRes = await fetch(url.toString());
+    }
+
+    if (!opponentRes.ok) {
+      setError(`Error ${opponentRes.status}`);
+      setLoading(false);
+      return;
+    }
+
     const data: SearchResult[] = await opponentRes.json();
     if (data.length) {
-      // 2️⃣ for each player, fetch its clan
+      // fetch each player's clan
       const withClans = await Promise.all(
-        data.map(async (p) => {
+        data.map(async (player) => {
           try {
             const clanRes = await fetch(
-              `/api/players/${encodeURIComponent(p.tag)}/clan`
+              `/api/players/${encodeURIComponent(player.tag)}/clan`
             );
             if (!clanRes.ok) throw new Error();
             const { clanName } = await clanRes.json();
-            return { ...p, clanName };
+            return { ...player, clanName };
           } catch {
-            return { ...p, clanName: null };
+            return { ...player, clanName: null };
           }
         })
       );
-      // 3️⃣ save into state
+      // save into state
       setResults(withClans.map((p) => ({ ...p, source: 'db' })));
       setLoading(false);
       return;
     }
 
-    // else by clan
+    // else search by clan
     if (clanname.trim()) {
-      // 1. fetch the clans
       const cr = await fetch(
         `/api/clans/search?name=${encodeURIComponent(clanname)}`
       );
       const clans: Clan[] = await cr.json();
-      const top5 = clans.slice(0, 5);
+      if (!clans || clans.length === 0) {
+        setError('No clans match that name');
+        setLoading(false);
+      }
 
-      // 2. fetch each clan’s members, and tag them with that clan’s name
+      const top5 = clans.slice(0, 10);
+
+      // fetch each clan’s members, and tag them with that clan’s name
       const membersByClan = await Promise.all(
         top5.map(async (clan) => {
           const res = await fetch(
@@ -80,16 +103,16 @@ export default function OpponentSearch() {
           return list.map((m) => ({
             tag: m.tag,
             name: m.name,
-            clanName: clan.name, // this is the real clan
+            clanName: clan.name,
           }));
         })
       );
 
-      // 3. flatten into one array
+      //  flatten into one array
       const flat: Array<{ tag: string; name: string; clanName: string }> =
         membersByClan.flat();
 
-      // 4. filter by username and shape into SearchResult
+      //  filter by username and shape into SearchResult
       const filtered: SearchResult[] = flat
         .filter((m) =>
           m.name.toLowerCase().includes(username.trim().toLowerCase())
@@ -101,6 +124,14 @@ export default function OpponentSearch() {
           source: 'clan',
         }));
 
+      if (filtered.length === 1) {
+        setSelectedResult(filtered[0]);
+        const deck = (await getLatestDeck(filtered[0].tag)) ?? [];
+        setSelectedDeck(deck);
+        setLoading(false);
+        return;
+      }
+
       setMembers(filtered);
       if (!filtered.length) setError('No clan members match that name');
       setLoading(false);
@@ -111,47 +142,49 @@ export default function OpponentSearch() {
     setLoading(false);
   };
 
-  // 2️⃣ pickMember at top level
-  const pickMember = async (opponent: SearchResult) => {
-    setLoading(true);
-    setError('');
-    setSelectedDeck(null);
-    // reset selectedResult without clanName yet
-    setSelectedResult({ ...opponent, clanName: '' });
-
-    const tag = opponent.tag;
-    // try saved
+  // Fetch saved deck from opponent in DB
+  const searchSavedDeck = async (tag: string) => {
     const lastRes = await fetch(`/api/players/${encodeURIComponent(tag)}/last`);
-    if (lastRes.ok) {
-      const { deck } = await lastRes.json();
-      setSelectedDeck(deck);
+    if (!lastRes.ok) return null;
 
-      // now fetch clan from DB or API
-      const clanRes = await fetch(
-        `/api/players/${encodeURIComponent(tag)}/clan`
-      );
-      const { clanName } = await clanRes.json();
-      setSelectedResult((r) => r && { ...r, clanName });
-      setResults([]);
+    const { deck } = await lastRes.json();
+    return Array.isArray(deck) ? deck : null;
+  };
 
-      setLoading(false);
-      return;
-    }
+  // fetch clan from API
+  const getPlayerClan = async (tag: string) => {
+    const clanRes = await fetch(`/api/players/${encodeURIComponent(tag)}/clan`);
+    const { clanName } = await clanRes.json();
+    return clanName;
+  };
 
-    // fallback live log
-    const logRes = await fetch(
+  const getLatestDeck = async (tag: string) => {
+    const battleLogRes = await fetch(
       `/api/player/${encodeURIComponent(tag)}/battlelog`
     );
-    if (!logRes.ok) {
+    if (!battleLogRes.ok) {
       setError('Failed to fetch battle log');
       setLoading(false);
       return;
     }
-    const logData = (await logRes.json()) as BattleLogEntry[];
+    const logData = (await battleLogRes.json()) as BattleLogEntry[];
     if (!logData.length) {
       setError('No recent battles found');
       setLoading(false);
       return;
+    }
+
+    // Check if the player plays multiple different decks
+    const lastDeck = logData[0].team[0].cards;
+    const otherDecks = [];
+
+    for (let i = 0; i < Math.min(5, logData.length); i++) {
+      if (logData[i].team[0].cards !== lastDeck) {
+        otherDecks.push(logData[i].team[0].cards);
+      }
+    }
+    if (otherDecks) {
+      setPlayersOtherDecks(otherDecks);
     }
 
     const recent = logData[0];
@@ -161,11 +194,19 @@ export default function OpponentSearch() {
       setLoading(false);
       return;
     }
-    // fetch clan for live fallback too
-    const clanRes2 = await fetch(
-      `/api/players/${encodeURIComponent(tag)}/clan`
-    );
-    const { clanName: liveClan } = await clanRes2.json();
+    return cards;
+  };
+
+  // Choose the player that corresponds to your opponent
+  const pickMember = async (opponent: SearchResult) => {
+    setLoading(true);
+    setError('');
+    setSelectedDeck(null);
+
+    const tag = opponent.tag;
+
+    const clanName = await getPlayerClan(tag);
+    const cards = await getLatestDeck(tag);
 
     setResults([]);
     setMembers([]);
@@ -174,12 +215,12 @@ export default function OpponentSearch() {
     setSelectedResult({
       tag,
       name: opponent.name,
-      clanName: liveClan,
+      clanName,
     });
     setLoading(false);
   };
 
-  // 3️⃣ render
+  // render
   return (
     <main className="p-8 space-y-6 flex justify-around">
       <section>
