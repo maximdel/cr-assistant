@@ -36,31 +36,28 @@ export default function OpponentSearch() {
     setMembers([]);
     setSelectedDeck(null);
 
-    let opponentRes: Response;
-
-    // Filter by name or name + clan
-    if (username && clanname) {
-      const url = new URL('/api/players', location.origin);
-      url.searchParams.set('name', username);
-      url.searchParams.set('clan', clanname);
-      opponentRes = await fetch(url.toString());
-    } else {
-      const url = new URL('/api/players', location.origin);
-      url.searchParams.set('name', username || '');
-      opponentRes = await fetch(url.toString());
+    // build URL once
+    const url = new URL('/api/players', location.origin);
+    if (username.trim()) {
+      url.searchParams.set('name', username.trim());
+    }
+    if (clanname.trim()) {
+      url.searchParams.set('clan', clanname.trim());
     }
 
+    // now fetch
+    const opponentRes = await fetch(url.toString());
     if (!opponentRes.ok) {
       setError(`Error ${opponentRes.status}`);
       setLoading(false);
       return;
     }
 
-    const data: SearchResult[] = await opponentRes.json();
-    if (data.length) {
+    const results: SearchResult[] = await opponentRes.json();
+    if (results.length) {
       // fetch each player's clan
       const withClans = await Promise.all(
-        data.map(async (player) => {
+        results.map(async (player) => {
           try {
             const clanRes = await fetch(
               `/api/players/${encodeURIComponent(player.tag)}/clan`
@@ -125,9 +122,7 @@ export default function OpponentSearch() {
         }));
 
       if (filtered.length === 1) {
-        setSelectedResult(filtered[0]);
-        const deck = (await getLatestDeck(filtered[0].tag)) ?? [];
-        setSelectedDeck(deck);
+        await pickMember(filtered[0]);
         setLoading(false);
         return;
       }
@@ -218,6 +213,8 @@ export default function OpponentSearch() {
       clanName,
     });
     setLoading(false);
+    setClanname('');
+    setUsername('');
   };
 
   // render
