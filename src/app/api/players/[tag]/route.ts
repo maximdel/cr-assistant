@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
 export async function GET(
   request: Request,
@@ -14,7 +14,7 @@ export async function GET(
     },
   });
   if (!res.ok)
-    return NextResponse.json({ error: "Not found" }, { status: res.status });
+    return NextResponse.json({ error: 'Not found' }, { status: res.status });
   const data = await res.json();
   return NextResponse.json(data);
 }

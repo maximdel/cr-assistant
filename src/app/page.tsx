@@ -105,9 +105,9 @@ export default function Home() {
 
     try {
       const [playerRes, chestsRes, logRes] = await Promise.all([
-        fetch(`/api/player/${encodeURIComponent(lookup)}`),
-        fetch(`/api/player/${encodeURIComponent(lookup)}/upcomingchests`),
-        fetch(`/api/player/${encodeURIComponent(lookup)}/battlelog`),
+        fetch(`/api/players/${encodeURIComponent(lookup)}`),
+        fetch(`/api/players/${encodeURIComponent(lookup)}/upcomingchests`),
+        fetch(`/api/players/${encodeURIComponent(lookup)}/battlelog`),
       ]);
 
       if (!playerRes.ok) throw new Error('Player not found 😢');
