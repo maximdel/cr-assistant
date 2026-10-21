@@ -8,20 +8,17 @@ export default function AdminCardsPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  function fetchCount() {
+    return fetch('/api/cards') // GET returns the stored cards
+      .then((res) => res.json())
+      .then((cards: unknown[]) => setCount(cards.length))
+      .catch(() => setCount(null));
+  }
+
   // load current count on mount
   useEffect(() => {
     fetchCount();
   }, []);
-
-  async function fetchCount() {
-    try {
-      const res = await fetch('/api/cards'); // GET returns map
-      const map = (await res.json()) as Record<string, string>;
-      setCount(Object.keys(map).length);
-    } catch {
-      setCount(null);
-    }
-  }
 
   async function handleSync() {
     setLoading(true);
@@ -37,8 +34,8 @@ export default function AdminCardsPage() {
       } else {
         setMessage('Sync failed.');
       }
-    } catch (err: any) {
-      setMessage(err.message);
+    } catch (err) {
+      setMessage((err as Error).message);
     } finally {
       setLoading(false);
     }

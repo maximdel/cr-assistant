@@ -1,85 +1,184 @@
 'use client';
 
+import { useSync } from '@/lib/sync';
+import { useMyProfile, useMyTag } from '@/lib/useMyTag';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useRef, useState } from 'react';
+import { FiChevronDown, FiRefreshCw } from 'react-icons/fi';
+import { GiTrophyCup } from 'react-icons/gi';
+import { useOnClickOutside } from 'usehooks-ts';
+import { Button, Input } from './components/ui';
+
+const NAV = [
+  { href: '/', label: 'Home' },
+  { href: '/scout', label: 'Scout' },
+  { href: '/players', label: 'Players' },
+  { href: '/rankings', label: 'Rankings' },
+];
 
 export default function Header() {
-  const [myTag, setMyTag] = useState('');
-  const [draftTag, setDraftTag] = useState('');
-
-  // On mount, load the saved tag
-  useEffect(() => {
-    const savedTag = localStorage.getItem('myPlayerTag');
-    if (savedTag) {
-      setMyTag(savedTag);
-      setDraftTag(savedTag);
-    }
-  }, []);
-
-  // Save to localStorage & state
-  const saveTag = () => {
-    const cleanTag = draftTag.trim();
-    if (!cleanTag) return;
-    localStorage.setItem('myPlayerTag', cleanTag);
-    setMyTag(cleanTag);
-  };
-
-  // Clear the saved tag
-  const clearTag = () => {
-    localStorage.removeItem('myPlayerTag');
-    setMyTag('');
-    setDraftTag('');
-  };
+  const pathname = usePathname();
 
   return (
-    <header className="bg-rose-950 mx-auto p-6 flex space-between">
-      <Link href="/" className="p-[0.5rem] my-auto mx-[2rem]">
-        {/* width/height are required */}
-        <Image
-          src="/favicon.ico"
-          alt="CR Assistant Logo"
-          width={120}
-          height={120}
-          priority={true} // preloads it for the LCP
-        />
-      </Link>{' '}
-      <div className="relative mx-auto mb-4 mt-8 flex w-full items-center justify-between pb-2">
+    <header className="sticky top-0 z-20 border-b border-border bg-bg/85 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+        <Link href="/" className="flex items-center gap-2 font-semibold">
+          <Image src="/favicon.ico" alt="" width={32} height={32} priority />
+          <span className="hidden sm:inline">CR Assistant</span>
+        </Link>
+
         {/* nav links */}
-        <nav className="space-x-4 text-rose-100 *:p-2 *:bg-rose-500 *:rounded *:hover:bg-rose-600 *:hover:shadow-md">
-          <a href="/" className="">
-            Home
-          </a>
-          <a href="/ranking">Ranking</a>
-          <a href="/playing">Playing</a>
-          <a href="/testing">Testing</a>
-          <a href="/admin">Admin</a>
+        <nav className="order-last -mx-1 flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto">
+          {NAV.map(({ href, label }) => {
+            const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                  active ? 'bg-surface-2 text-fg' : 'text-muted hover:text-fg'
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
         </nav>
-        {/* stay‑logged‑in tag input */}
-        <div className="flex items-center space-x-2">
-          <input
-            type="text"
-            value={draftTag}
-            onChange={(e) => setDraftTag(e.target.value)}
-            placeholder="#YOURTAG"
-            className="p-2 border rounded text- bg-rose-950"
-          />
-          <button
-            onClick={saveTag}
-            className="px-3 py-1 bg-green-500 text-white rounded"
-          >
-            {myTag ? 'Update' : 'Save'}
-          </button>
-          {myTag && (
-            <button
-              onClick={clearTag}
-              className="px-3 py-1 bg-red-500 text-white rounded"
-            >
-              Clear
-            </button>
-          )}
+
+        <div className="ml-auto flex items-center gap-2">
+          <SyncIndicator />
+          <PlayerChip />
         </div>
       </div>
     </header>
+  );
+}
+
+function SyncIndicator() {
+  const [myTag] = useMyTag();
+  const { enabled, setEnabled, syncing, nextIn, error } = useSync();
+  if (!myTag) return null;
+
+  return (
+    <button
+      onClick={() => setEnabled(!enabled)}
+      title={error ?? (enabled ? 'Auto-sync is on. Click to pause' : 'Auto-sync is paused. Click to start')}
+      className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition ${
+        error
+          ? 'border-loss/50 text-loss'
+          : enabled
+            ? 'border-win/40 text-win'
+            : 'border-border text-muted hover:text-fg'
+      }`}
+    >
+      <FiRefreshCw className={syncing ? 'animate-spin' : ''} />
+      {enabled ? (
+        <span className="tabular-nums">
+          {syncing ? 'Syncing' : `${Math.floor(nextIn / 60)}:${String(nextIn % 60).padStart(2, '0')}`}
+        </span>
+      ) : (
+        <span>Sync off</span>
+      )}
+    </button>
+  );
+}
+
+function PlayerChip() {
+  const [myTag, setMyTag, removeMyTag] = useMyTag();
+  const { profile, error } = useMyProfile();
+  const [open, setOpen] = useState(false);
+  const [draftTag, setDraftTag] = useState('');
+  const ref = useRef<HTMLDivElement>(null!);
+  useOnClickOutside(ref, () => setOpen(false));
+
+  // Save to localStorage
+  const saveTag = () => {
+    const cleanTag = draftTag.trim().toUpperCase().replace(/^#?/, '#');
+    if (cleanTag.length < 4) return;
+    setMyTag(cleanTag);
+    setDraftTag('');
+    setOpen(false);
+  };
+
+  const tagForm = (
+    <form
+      className="flex gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        saveTag();
+      }}
+    >
+      <Input
+        value={draftTag}
+        onChange={(e) => setDraftTag(e.target.value)}
+        placeholder="#YOURTAG"
+        className="w-32 [&:not(:placeholder-shown)]:uppercase"
+      />
+      <Button type="submit" className="px-3">
+        Save
+      </Button>
+    </form>
+  );
+
+  // no tag yet: just the form
+  if (!myTag) return tagForm;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 rounded-lg border border-border bg-surface px-2 py-1 text-left hover:border-muted"
+      >
+        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent/15 text-sm font-bold text-accent">
+          {(profile?.name ?? '?').slice(0, 1).toUpperCase()}
+        </span>
+        <span className="leading-tight">
+          <span className="block text-sm font-medium">{profile?.name ?? myTag}</span>
+          {profile ? (
+            <span className="flex items-center gap-1 text-xs text-accent">
+              <GiTrophyCup /> {profile.trophies.toLocaleString()}
+            </span>
+          ) : (
+            error && <span className="block text-xs text-loss">profile unavailable</span>
+          )}
+        </span>
+        <FiChevronDown className="text-muted" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-72 space-y-3 rounded-xl border border-border bg-surface p-4 shadow-xl">
+          <div>
+            <p className="font-medium">{profile?.name ?? 'Your account'}</p>
+            <p className="text-xs text-muted">
+              {myTag}
+              {profile?.clan && (
+                <>
+                  {' · '}
+                  <bdi>{profile.clan.name}</bdi>
+                </>
+              )}
+              {profile?.arena && ` · ${profile.arena.name}`}
+            </p>
+            {error && <p className="mt-1 text-xs text-loss">{error}</p>}
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted">Switch account</p>
+            {tagForm}
+          </div>
+          <Button
+            variant="danger"
+            className="w-full"
+            onClick={() => {
+              removeMyTag();
+              setOpen(false);
+            }}
+          >
+            Forget this tag
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,11 +1,21 @@
-import { Clan } from './clan';
-import { Encounter } from './encounter';
+import type { CardInfo } from './battle';
 
-export interface Player {
-  id: number;
-  tag: string; // e.g. "#2RGCUYU"
+// Player profile from the Clash Royale API (only the fields we use)
+export interface PlayerProfile {
+  tag: string;
   name: string;
-  lastSeen: string; // ISO timestamp
-  encounters: Encounter[];
-  playerClan: Clan[];
+  expLevel?: number;
+  trophies: number;
+  bestTrophies?: number;
+  wins?: number;
+  losses?: number;
+  arena?: { id: number; name: string };
+  clan?: { tag: string; name: string; badgeId: number };
+  currentDeck?: CardInfo[];
+  currentPathOfLegendSeasonResult?: { leagueNumber: number; trophies: number; rank: number | null };
+  bestPathOfLegendSeasonResult?: { leagueNumber: number; trophies: number; rank: number | null };
+}
+
+export interface UpcomingChests {
+  items: { index: number; name: string }[];
 }

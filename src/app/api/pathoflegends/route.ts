@@ -1,22 +1,14 @@
-import { NextResponse } from "next/server";
+import { clashApi, errorResponse } from '@/lib/clashApi';
+import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const locationId = searchParams.get("locationId") ?? "57000029";
-  const url = `https://api.clashroyale.com/v1/locations/${locationId}/pathoflegend/players`;
-
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${process.env.NEXT_PUBLIC_CR_API_TOKEN}`,
-    },
-  });
-
-  if (!res.ok) {
+  const locationId = searchParams.get('locationId') ?? 'global';
+  try {
     return NextResponse.json(
-      { error: "Failed to fetch leaderboard" },
-      { status: res.status }
+      await clashApi(`/locations/${encodeURIComponent(locationId)}/pathoflegend/players`, 300)
     );
+  } catch (err) {
+    return errorResponse(err);
   }
-
-  return NextResponse.json(await res.json());
 }

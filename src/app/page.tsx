@@ -1,274 +1,213 @@
 'use client';
 
-import { Preset } from '@prisma/client';
-import { useEffect, useRef, useState } from 'react';
+import { timeAgo } from '@/lib/format';
+import { useSync } from '@/lib/sync';
+import { useMyProfile, useMyTag } from '@/lib/useMyTag';
+import type { Encounter } from '@/types/encounter';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { FiRefreshCw } from 'react-icons/fi';
+import { GiTrophyCup } from 'react-icons/gi';
+import ClanBadge from './components/ClanBadge';
+import DeckDisplay from './components/DeckDisplay';
+import MatchList from './components/MatchList';
+import { Button, Card, ErrorText, Input, SectionTitle } from './components/ui';
 
 export default function Home() {
+  const [myTag] = useMyTag();
+  return myTag ? <Dashboard myTag={myTag} /> : <Welcome />;
+}
+
+// First visit: explain the app and ask for a tag
+function Welcome() {
+  const [, setMyTag] = useMyTag();
   const [tag, setTag] = useState('');
-  const [nameInput, setNameInput] = useState('');
-  const [editingTag, setEditingTag] = useState<string | null>(null);
 
-  // ref to focus on name field when it appears
-  const nameRef = useRef<HTMLInputElement>(null);
-
-  // Saved playertags
-  const [presets, setPresets] = useState<Preset[]>([]);
-
-  const [player, setPlayer] = useState<any>(null);
-
-  // Loading and error states
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState<boolean>(false);
-
-  // load presets from DB
-  useEffect(() => {
-    fetch('/api/presets')
-      .then((r) => r.json())
-      .then((data: Preset[]) => setPresets(data));
-  }, []);
-
-  // when editingTag becomes non-null, focus the name input
-  useEffect(() => {
-    if (editingTag) {
-      nameRef.current?.focus();
-    }
-  }, [editingTag]);
-
-  // After clicking 'Save' button, open popup
-  const startAdd = () => {
-    const cleanedTag = tag.trim();
-    if (!cleanedTag) {
-      setError('Please specify a tag');
-      return;
-    }
-    // enter “naming mode”
-    setEditingTag(cleanedTag);
-    // reset the name field
-    setNameInput('');
-  };
-
-  // Create Preset object
-  const confirmAdd = async () => {
-    if (!editingTag) {
-      setError('Please specify a player tag');
-      return;
-    }
-    if (!nameInput.trim()) {
-      setError('Please specify a placeholder name');
-      return;
-    }
-    const res = await fetch('/api/presets', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tag: editingTag, name: nameInput.trim() }),
-    });
-
-    if (!res.ok) {
-      setError('Could not save preset');
-      return;
-    }
-
-    const newPreset: Preset = await res.json();
-    setPresets((prev) => [
-      newPreset,
-      ...prev.filter((p) => p.tag !== newPreset.tag),
-    ]);
-    setEditingTag(null);
-    setTag('');
-    setNameInput('');
-  };
-
-  // Delete Preset by tag
-  const removePreset = async (tagToRemove: string) => {
-    const res = await fetch(`/api/presets/${encodeURIComponent(tagToRemove)}`, {
-      method: 'DELETE',
-    });
-    if (!res.ok) {
-      setError('Could not remove preset');
-      return;
-    }
-    setPresets((prev) => prev.filter((p) => p.tag !== tagToRemove));
-  };
-
-  const fetchPlayer = async (e?: React.FormEvent, newTag?: string) => {
-    if (e) e.preventDefault();
-    setLoading(true);
-    setError('');
-    setPlayer(null);
-
-    const lookup = newTag ?? tag.trim();
-    if (!lookup) {
-      setError('Please specify a tag');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const [playerRes, chestsRes, logRes] = await Promise.all([
-        fetch(`/api/players/${encodeURIComponent(lookup)}`),
-        fetch(`/api/players/${encodeURIComponent(lookup)}/upcomingchests`),
-        fetch(`/api/players/${encodeURIComponent(lookup)}/battlelog`),
-      ]);
-
-      if (!playerRes.ok) throw new Error('Player not found 😢');
-
-      const [playerData, chestsData, logData] = await Promise.all([
-        playerRes.json(),
-        chestsRes.json(),
-        logRes.json(),
-      ]);
-
-      setPlayer({
-        ...playerData,
-        upcomingChests: chestsData,
-        battleLog: logData,
-      });
-      setTag('');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Previous version:
-
-  // const addPreset = () => {
-  //   setLoading(true);
-  //   const clean = tag.trim();
-  //   if (clean && !presets.includes(clean)) {
-  //     setPresets([clean, ...presets]);
-  //     setTag('');
-  //   }
-  //   setLoading(false);
-  // };
-
-  // const removePreset = (t: string) => {
-  //   setPresets(presets.filter((x) => x !== t));
-  // };
   return (
-    <main className="p-8 mx-auto space-y-6 grid grid-cols-3 grid-cols-[25%_50%_15%] gap-[min(2rem,5%)]">
-      <section>
-        <h1 className="text-2xl font-bold">Clash Repo</h1>
-        {error && <p className="text-red-500">{error}</p>}
-        {loading && <p className="text-blue-500">Loading…</p>}
+    <div className="mx-auto max-w-2xl space-y-8 py-8 text-center">
+      <div className="space-y-3">
+        <h1 className="text-4xl font-bold tracking-tight">
+          Scout your opponents.
+          <br />
+          <span className="text-accent">Learn from your matches.</span>
+        </h1>
+        <p className="text-muted">
+          See what your opponent plays before the match starts, and keep a history of every
+          battle to find out what you lose to.
+        </p>
+      </div>
 
-        {/* search + save form */}
-        <form onSubmit={fetchPlayer} className="flex gap-2">
-          <input
-            value={tag}
-            onChange={(e) => setTag(e.target.value)}
-            placeholder="Enter player tag"
-            className="flex-1 p-2 border rounded"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-500 text-white rounded"
-          >
-            Search
-          </button>
-          <button
-            type="button"
-            onClick={startAdd}
-            className="px-4 py-2 bg-green-500 text-white rounded"
-          >
-            Save
-          </button>
-        </form>
+      <form
+        className="mx-auto flex max-w-sm gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const clean = tag.trim().toUpperCase().replace(/^#?/, '#');
+          if (clean.length >= 4) setMyTag(clean);
+        }}
+      >
+        <Input
+          value={tag}
+          onChange={(e) => setTag(e.target.value)}
+          placeholder="Your player tag, e.g. #2RGCUYU"
+          className="[&:not(:placeholder-shown)]:uppercase"
+          autoFocus
+        />
+        <Button type="submit">Start</Button>
+      </form>
+      <p className="text-xs text-muted">
+        Find your tag in the game: tap your name at the top left of the main screen.
+      </p>
 
-        {/* inline name input & confirm */}
-        {editingTag && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              confirmAdd();
-            }}
-            className="flex gap-2 mb-4"
-          >
+      <div className="grid gap-3 text-left sm:grid-cols-3">
+        {[
+          ['1. Save your tag', 'So the app knows which matches are yours.'],
+          ['2. Turn on sync', 'Your matches are saved every 2 minutes while the app is open.'],
+          ['3. Scout', 'Type or send your opponent’s name from your phone when a match starts.'],
+        ].map(([title, text]) => (
+          <Card key={title} className="p-4">
+            <p className="font-medium">{title}</p>
+            <p className="text-sm text-muted">{text}</p>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Dashboard({ myTag }: { myTag: string }) {
+  const { profile, error: profileError } = useMyProfile();
+  const sync = useSync();
+  const [matches, setMatches] = useState<Encounter[] | null>(null);
+
+  // reload the list after every sync
+  useEffect(() => {
+    fetch(`/api/encounters?myTag=${encodeURIComponent(myTag)}&limit=30`)
+      .then((r) => r.json())
+      .then(setMatches)
+      .catch(() => setMatches([]));
+  }, [myTag, sync.version]);
+
+  const recent = matches ?? [];
+  const wins = recent.filter((m) => m.result === 'win').length;
+  const losses = recent.filter((m) => m.result === 'loss').length;
+
+  return (
+    <div className="space-y-6">
+      <ErrorText>{profileError}</ErrorText>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        {/* profile */}
+        <Card className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-3">
+            <div>
+              <h1 className="text-2xl font-bold">{profile?.name ?? myTag}</h1>
+              <p className="flex items-center gap-1.5 text-sm text-muted">
+                {myTag}
+                {profile?.clan && (
+                  <>
+                    {' · '}
+                    <ClanBadge badgeId={profile.clan.badgeId} size={16} />
+                    {profile.clan.name}
+                  </>
+                )}
+              </p>
+            </div>
+            {profile && (
+              <div className="flex flex-wrap gap-4">
+                <Stat label="Trophies" value={profile.trophies.toLocaleString()} accent />
+                {profile.arena && <Stat label="Arena" value={profile.arena.name} />}
+                {profile.bestPathOfLegendSeasonResult?.rank && (
+                  <Stat
+                    label="Best ranked"
+                    value={`#${profile.bestPathOfLegendSeasonResult.rank.toLocaleString()}`}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+          {profile?.currentDeck && (
+            <div>
+              <p className="mb-2 text-xs uppercase tracking-wide text-muted">Current deck</p>
+              <DeckDisplay cards={profile.currentDeck} size="sm" />
+            </div>
+          )}
+        </Card>
+
+        {/* sync */}
+        <Card className="space-y-4">
+          <SectionTitle>Match sync</SectionTitle>
+          <label className="flex cursor-pointer items-center justify-between gap-3">
+            <span>
+              <span className="block font-medium">Auto-save my matches</span>
+              <span className="text-xs text-muted">Every 2 min, on any page of the app</span>
+            </span>
             <input
-              ref={nameRef}
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              placeholder="Preset name"
-              className="flex-1 p-2 border rounded"
+              type="checkbox"
+              checked={sync.enabled}
+              onChange={(e) => sync.setEnabled(e.target.checked)}
+              className="h-5 w-5 accent-[var(--color-win)]"
             />
-            <button
-              onClick={confirmAdd}
-              className="px-4 py-2 bg-indigo-500 text-white rounded"
-            >
-              Confirm
-            </button>
-          </form>
-        )}
-      </section>
+          </label>
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={sync.syncNow}
+            disabled={sync.syncing}
+          >
+            <FiRefreshCw className={sync.syncing ? 'animate-spin' : ''} />
+            Sync now
+          </Button>
+          <p className="text-xs text-muted">
+            {sync.lastSync
+              ? `Last sync ${timeAgo(sync.lastSync.at)}: ${sync.lastSync.saved} new match${sync.lastSync.saved === 1 ? '' : 'es'}`
+              : 'Ladder, ranked, challenge and war battles are saved. Events are skipped.'}
+          </p>
+          <ErrorText>{sync.error}</ErrorText>
+        </Card>
+      </div>
+
+      {/* recent matches */}
       <section>
-        {loading && <p>Loading...</p>}
-        {/* display fetched player info */}
-        {player && (
-          <section className="mt-6">
-            <h2 className="text-xl font-bold">
-              {player.name} ({player.tag})
-            </h2>
-            <p>Trophies: {player.trophies}</p>
-            <p>Clan: {player.clan?.name ?? 'No clan'}</p>
-
-            {player.upcomingChests && (
-              <div className="mt-4">
-                <h3 className="font-semibold">Upcoming Chests</h3>
-                <ul className="list-disc ml-6">
-                  {player.upcomingChests.items.map((c: any, i: number) => (
-                    <li key={i}>
-                      {c.name} (in {c.index} games)
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {player.battleLog && (
-              <div className="mt-4">
-                <h3 className="font-semibold">Recent Battles</h3>
-                <ul className="list-disc ml-6">
-                  {player.battleLog.map((b: any, i: number) => (
-                    <li key={i}>
-                      {b.team[0].name} vs {b.opponent[0].name} —{' '}
-                      {b.team[0].crowns > b.opponent[0].crowns ? 'Win' : 'Loss'}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </section>
+        <SectionTitle
+          right={
+            recent.length > 0 && (
+              <span className="text-sm text-muted">
+                Last {recent.length}:{' '}
+                <span className="font-semibold text-win">{wins}W</span> /{' '}
+                <span className="font-semibold text-loss">{losses}L</span> ·{' '}
+                {Math.round((wins / recent.length) * 100)}%
+              </span>
+            )
+          }
+        >
+          Saved matches
+        </SectionTitle>
+        {matches === null ? (
+          <p className="text-sm text-muted">Loading…</p>
+        ) : (
+          <MatchList
+            matches={recent}
+            highlight={sync.newIds}
+            empty="No matches saved yet. Turn on sync or click “Sync now”."
+          />
         )}
       </section>
 
-      <section>
-        {/* list of presets */}
-        {presets.length > 0 && (
-          <section>
-            <h2 className="font-semibold mb-2">Your Presets</h2>
-            <ul className="space-y-1">
-              {presets.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex justify-between items-center border rounded-lg hover:bg-fuchsia-100 hover:cursor-grab"
-                  onClick={() => fetchPlayer(undefined, p.tag)}
-                >
-                  <span className="mx-4">
-                    <strong>{p.name}</strong> ({p.tag})
-                  </span>
-                  <button
-                    onClick={() => removePreset(p.tag)}
-                    className="text-red-500 mx-4 my-1"
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-      </section>
-    </main>
+      <p className="text-center text-sm text-muted">
+        In a match? <Link href="/scout" className="text-primary hover:underline">Scout your opponent →</Link>
+      </p>
+    </div>
+  );
+}
+
+function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div>
+      <p className="text-xs text-muted">{label}</p>
+      <p className={`flex items-center gap-1 font-semibold ${accent ? 'text-accent' : ''}`}>
+        {accent && <GiTrophyCup />}
+        {value}
+      </p>
+    </div>
   );
 }

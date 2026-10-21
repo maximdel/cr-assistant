@@ -1,3 +1,4 @@
+import { SyncProvider } from '@/lib/sync';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'CR Assistant',
-  description: 'Created by zizitop',
+  description: 'Scout opponents and learn from your Clash Royale matches',
 };
 
 export default function RootLayout({
@@ -25,11 +26,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <Header />
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <SyncProvider>
+          <Header />
+          <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">{children}</main>
+        </SyncProvider>
       </body>
     </html>
   );

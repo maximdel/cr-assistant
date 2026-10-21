@@ -1,10 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
+// The connection URL lives in prisma.config.ts
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model Preset {
@@ -13,6 +14,7 @@ model Preset {
   name String
 }
 
+// Anyone you've played against
 model Player {
   id         Int         @id @default(autoincrement())
   tag        String      @unique
@@ -31,14 +33,29 @@ model Clan {
   memberList Player[]
 }
 
+// One of your battles, saved from your battle log
 model Encounter {
-  id         Int      @id @default(autoincrement())
-  opponentId Int
-  deck       Json
-  playedAt   DateTime
-  opponent   Player   @relation(fields: [opponentId], references: [id])
+  id             Int      @id @default(autoincrement())
+  myTag          String // whose battle log this came from
+  opponentId     Int
+  playedAt       DateTime
+  type           String // battle type from the API, e.g. "PvP", "pathOfLegend"
+  gameMode       String // e.g. "Ladder", "Ranked1v1_NewArena"
+  result         String // "win" | "loss" | "draw"
+  myCrowns       Int
+  opponentCrowns Int
+  trophyChange   Int?
+  myDeck         Json
+  opponentDeck   Json
+  raw            Json // the full battle, so later analytics don't depend on what we picked out today
+  opponent       Player   @relation(fields: [opponentId], references: [id])
+
+  @@unique([myTag, opponentId, playedAt])
+  @@index([myTag, playedAt])
 }
 
+// Not used at the moment: battle log cards come with their own icons.
+// Kept for now, can be removed together with /admin and /api/cards.
 model CardImage {
   id      Int     @id @default(autoincrement())
   name    String  @unique
