@@ -1,7 +1,7 @@
 'use client';
-import { deckKey } from '@/lib/deck';
 import { minutesSince, timeAgo } from '@/lib/format';
 import { ALL_GAME_TYPES, battleTypesFor } from '@/lib/gameTypes';
+import { useSync } from '@/lib/sync';
 import { useCountryPresets } from '@/lib/useCountryPresets';
 import { useMyTag } from '@/lib/useMyTag';
 import type { BattleLogEntry, CardInfo } from '@/types/battle';
@@ -12,14 +12,16 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { FiSearch, FiSmartphone } from 'react-icons/fi';
 import { GiTrophyCup } from 'react-icons/gi';
-import { useInterval } from 'usehooks-ts';
+import { useInterval, useLocalStorage } from 'usehooks-ts';
 import ClanBadge from '../components/ClanBadge';
-import DeckDisplay from '../components/DeckDisplay';
 import { GameTypeFilter } from '../components/GameTypeFilter';
 import MatchList from '../components/MatchList';
 import Matchups from '../components/Matchups';
 import RecentDecks, { recentDecks } from '../components/RecentDecks';
 import { Button, Card, EmptyState, ErrorText, Input, Pill, SectionTitle, Spinner } from '../components/ui';
+
+// opponents you looked at, kept in the browser
+type RecentScout = { tag: string; name: string; clanName?: string; clanBadgeId?: number; at: number };
 
 type Opponent = {
   candidate: Candidate;
@@ -62,6 +64,9 @@ export default function ScoutPage() {
   const [error, setError] = useState('');
 
   const [opponent, setOpponent] = useState<Opponent | null>(null);
+  const [recent, setRecent] = useLocalStorage<RecentScout[]>('recentScouts', [], {
+    initializeWithValue: false,
+  });
   const [loadingTag, setLoadingTag] = useState<string | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
@@ -128,6 +133,10 @@ export default function ScoutPage() {
     setError('');
     try {
       setOpponent(await loadOpponent(candidate));
+      const { tag, name, clanName, clanBadgeId } = candidate;
+      setRecent((prev) =>
+        [{ tag, name, clanName, clanBadgeId, at: Date.now() }, ...prev.filter((r) => r.tag !== tag)].slice(0, 10)
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -178,6 +187,16 @@ export default function ScoutPage() {
             clan name.
           </p>
         </Card>
+
+        {recent.length > 0 && (
+          <RecentlyScouted
+            recent={recent}
+            myTag={myTag}
+            selectedTag={opponent?.candidate.tag}
+            onPick={(r) => pickOpponent({ ...r, sources: [], score: 0 })}
+            onClear={() => setRecent([])}
+          />
+        )}
 
         <ErrorText>{error}</ErrorText>
         {warnings.map((w) => (
@@ -310,10 +329,6 @@ function OpponentPanel({
   const wins = history.filter((h) => h.result === 'win').length;
   const losses = history.filter((h) => h.result === 'loss').length;
   const clan = profile?.clan ?? (candidate.clanName ? { name: candidate.clanName, badgeId: candidate.clanBadgeId } : null);
-  const lastBattleDeck = battles.find((b) => b.team.length === 1 && b.team[0].cards.length === 8)
-    ?.team[0].cards;
-  const sameAsLast =
-    profile?.currentDeck && lastBattleDeck && deckKey(profile.currentDeck) === deckKey(lastBattleDeck);
 
   return (
     <div className="space-y-4">
@@ -354,34 +369,17 @@ function OpponentPanel({
         </div>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <SectionTitle right={<GameTypeFilter selected={gameTypes} onChange={setGameTypes} />}>
-            Recent decks
-          </SectionTitle>
-          <RecentDecks
-            battles={battles}
-            types={battleTypesFor(gameTypes)}
-            focused={myTag ? focused : null}
-            onFocus={myTag ? setPicked : undefined}
-          />
-        </Card>
-
-        {profile?.currentDeck && (
-          <Card>
-            <SectionTitle
-              right={sameAsLast && <Pill className="bg-win/15 text-win">same as last match</Pill>}
-            >
-              Deck selected in game
-            </SectionTitle>
-            <DeckDisplay cards={profile.currentDeck} />
-            <p className="mt-2 text-xs text-muted">
-              The deck in their active slot right now (it may differ from the one used in some
-              modes).
-            </p>
-          </Card>
-        )}
-      </div>
+      <Card>
+        <SectionTitle right={<GameTypeFilter selected={gameTypes} onChange={setGameTypes} />}>
+          Recent decks
+        </SectionTitle>
+        <RecentDecks
+          battles={battles}
+          types={battleTypesFor(gameTypes)}
+          focused={myTag ? focused : null}
+          onFocus={myTag ? setPicked : undefined}
+        />
+      </Card>
 
       {myTag && focused && <Matchups myTag={myTag} deck={focused} />}
 
@@ -392,6 +390,88 @@ function OpponentPanel({
         </section>
       )}
     </div>
+  );
+}
+
+// Your last scouted opponents, with the result once sync has saved the match
+function RecentlyScouted({
+  recent,
+  myTag,
+  selectedTag,
+  onPick,
+  onClear,
+}: {
+  recent: RecentScout[];
+  myTag: string;
+  selectedTag?: string;
+  onPick: (r: RecentScout) => void;
+  onClear: () => void;
+}) {
+  const { version } = useSync();
+  const [matches, setMatches] = useState<Encounter[]>([]);
+
+  // reload after every sync, so results show up as soon as they're saved
+  useEffect(() => {
+    if (!myTag) return;
+    fetch(`/api/encounters?myTag=${encodeURIComponent(myTag)}&limit=50`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setMatches)
+      .catch(() => {});
+  }, [myTag, version]);
+
+  // a match against them that started around or after the moment you scouted them
+  const resultFor = (r: RecentScout) =>
+    matches.find(
+      (m) => m.opponent.tag === r.tag && new Date(m.playedAt).getTime() > r.at - 15 * 60_000
+    );
+
+  return (
+    <section>
+      <SectionTitle
+        right={
+          <button onClick={onClear} className="text-xs text-muted hover:text-fg">
+            Clear
+          </button>
+        }
+      >
+        Recently scouted
+      </SectionTitle>
+      <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+        {recent.map((r) => {
+          const match = resultFor(r);
+          return (
+            <li key={r.tag}>
+              <button
+                onClick={() => onPick(r)}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-2 ${
+                  selectedTag === r.tag ? 'bg-primary/10' : ''
+                }`}
+              >
+                <ClanBadge badgeId={r.clanBadgeId} size={18} />
+                <span className="min-w-0 flex-1 truncate">
+                  <bdi className="font-medium">{r.name}</bdi>
+                  <span className="text-muted"> · {timeAgo(new Date(r.at))}</span>
+                </span>
+                {match && (
+                  <Pill
+                    className={
+                      match.result === 'win'
+                        ? 'bg-win/15 text-win'
+                        : match.result === 'loss'
+                          ? 'bg-loss/15 text-loss'
+                          : undefined
+                    }
+                  >
+                    {match.result === 'win' ? 'Won' : match.result === 'loss' ? 'Lost' : 'Draw'}{' '}
+                    {match.myCrowns}-{match.opponentCrowns}
+                  </Pill>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

@@ -215,7 +215,7 @@ function PlayerView({
         </div>
         {profile.currentDeck && (
           <div>
-            <p className="mb-2 text-xs uppercase tracking-wide text-muted">Deck selected in game</p>
+            <p className="mb-2 text-xs uppercase tracking-wide text-muted">Ladder deck</p>
             <DeckDisplay cards={profile.currentDeck} size="sm" />
           </div>
         )}

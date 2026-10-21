@@ -127,7 +127,7 @@ function Dashboard({ myTag }: { myTag: string }) {
           </div>
           {profile?.currentDeck && (
             <div>
-              <p className="mb-2 text-xs uppercase tracking-wide text-muted">Current deck</p>
+              <p className="mb-2 text-xs uppercase tracking-wide text-muted">Ladder deck</p>
               <DeckDisplay cards={profile.currentDeck} size="sm" />
             </div>
           )}
