@@ -2,12 +2,14 @@
 
 A personal Clash Royale companion that runs on your own computer. It's built to help you **learn from your matches**, not just look up stats.
 
-- **Scout**: type (or send from your phone) your opponent's name and clan when a match starts. The app finds who it is and shows the decks they've played recently, the deck selected in their profile, and your record against them.
+- **Scout**: type (or send from your phone) your opponent's name and clan when a match starts. The app finds who it is and shows the decks they've played recently, the deck selected in their profile, your record against them, and **how you've done against decks like theirs** (same deck, or 7 or 6 cards in common), including which of your decks did best.
 - **Match history**: your battles are saved automatically, with both decks, the result and the full battle data. The game's battle log only keeps your last ~25 battles, so anything the app doesn't save is lost.
 - **Players**: look up anyone by tag and star the ones you want to keep around.
 - **Rankings**: Path of Legends leaderboards, global or for the countries you pick, with your own rank and the Elo needed for each milestone.
 
-> Coming next: matchup analytics (how you do against decks sharing 8/7/6 cards with a given list, per-card win rates, and so on).
+- **Copy any deck**: every deck has a *Copy deck link* / *Open in game* link (the official Clash Royale deck link; on your phone it opens the deck in the game).
+
+> Coming next: deeper analytics on your own matches (per-card win rates, your worst matchups, and so on).
 
 ## Quick start
 
@@ -54,7 +56,8 @@ Tips:
 - Any **3 or more characters** of the clan name work, in any script, so you can type just the latin part of a clan name. A clan tag (`#ABC123`) works too.
 - Names are matched loosely: case, accents and fancy unicode letters don't matter (`xorg` finds `ⓍⓄⓇⒼ`), and small OCR mistakes are tolerated.
 - Opponents without a clan can only be found if you've played them before or they're on a leaderboard.
-- When one result is a clear match, its decks open straight away.
+- When one result is a clear match, its decks open straight away. The top results are loaded in the background, so picking another one is instant.
+- The "How you do against this deck" section uses the deck they used last. Click *My record vs this* on another deck to check that one instead.
 
 ## Sending your opponent from your phone (iPhone Shortcut)
 

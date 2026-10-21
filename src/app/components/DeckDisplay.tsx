@@ -3,11 +3,12 @@
 import { averageElixir } from '@/lib/deck';
 import type { CardInfo } from '@/types/battle';
 import Image from 'next/image';
+import CopyDeck from './CopyDeck';
 
 // The API gives levels relative to each rarity's max level; the game shows them on a 1-16 scale
 const MAX_LEVEL = 16;
 
-// Card art comes with the battle log, no need for the card table.
+// Card art comes with the battle log.
 // evolutionLevel: 1 = played as evolution, 2 = played as hero
 const cardImage = (card: CardInfo) =>
   (card.evolutionLevel === 1 && card.iconUrls?.evolutionMedium) ||
@@ -60,11 +61,14 @@ export default function DeckDisplay({
           </li>
         ))}
       </ul>
-      {avg != null && (
-        <p className="mt-2 text-xs text-muted">
-          Avg elixir <span className="font-semibold text-elixir">{avg.toFixed(1)}</span>
-        </p>
-      )}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+        {avg != null && (
+          <p className="text-xs text-muted">
+            Avg elixir <span className="font-semibold text-elixir">{avg.toFixed(1)}</span>
+          </p>
+        )}
+        <CopyDeck cards={cards} />
+      </div>
     </div>
   );
 }

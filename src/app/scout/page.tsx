@@ -4,7 +4,7 @@ import { minutesSince, timeAgo } from '@/lib/format';
 import { ALL_GAME_TYPES, battleTypesFor } from '@/lib/gameTypes';
 import { useCountryPresets } from '@/lib/useCountryPresets';
 import { useMyTag } from '@/lib/useMyTag';
-import type { BattleLogEntry } from '@/types/battle';
+import type { BattleLogEntry, CardInfo } from '@/types/battle';
 import type { Encounter } from '@/types/encounter';
 import type { PlayerProfile } from '@/types/player';
 import type { Candidate } from '@/types/search';
@@ -17,7 +17,8 @@ import ClanBadge from '../components/ClanBadge';
 import DeckDisplay from '../components/DeckDisplay';
 import { GameTypeFilter } from '../components/GameTypeFilter';
 import MatchList from '../components/MatchList';
-import RecentDecks from '../components/RecentDecks';
+import Matchups from '../components/Matchups';
+import RecentDecks, { recentDecks } from '../components/RecentDecks';
 import { Button, Card, EmptyState, ErrorText, Input, Pill, SectionTitle, Spinner } from '../components/ui';
 
 type Opponent = {
@@ -26,6 +27,27 @@ type Opponent = {
   battles: BattleLogEntry[];
   history: Encounter[];
 };
+
+// Everything we show about a possible opponent
+async function fetchOpponent(candidate: Candidate, myTag: string): Promise<Opponent> {
+  const tag = encodeURIComponent(candidate.tag);
+  const [profileRes, logRes, history] = await Promise.all([
+    fetch(`/api/players/${tag}`),
+    fetch(`/api/players/${tag}/battlelog`),
+    fetch(`/api/encounters?opponent=${tag}${myTag ? `&myTag=${encodeURIComponent(myTag)}` : ''}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .catch(() => []),
+  ]);
+  const battles = await logRes.json();
+  if (!logRes.ok) throw new Error(battles.error || 'Could not load their battle log');
+
+  return {
+    candidate,
+    profile: profileRes.ok ? await profileRes.json() : null,
+    battles,
+    history,
+  };
+}
 
 export default function ScoutPage() {
   const [myTag] = useMyTag();
@@ -43,6 +65,19 @@ export default function ScoutPage() {
   const [loadingTag, setLoadingTag] = useState<string | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
+  // opponents being loaded or already loaded, so picking a prefetched one is instant
+  const loaded = useRef(new Map<string, Promise<Opponent>>());
+
+  const loadOpponent = (candidate: Candidate) => {
+    let promise = loaded.current.get(candidate.tag);
+    if (!promise) {
+      promise = fetchOpponent(candidate, myTag);
+      // a failed load can be retried
+      promise.catch(() => loaded.current.delete(candidate.tag));
+      loaded.current.set(candidate.tag, promise);
+    }
+    return promise;
+  };
 
   useEffect(() => {
     nameRef.current?.focus();
@@ -58,6 +93,7 @@ export default function ScoutPage() {
     setError('');
     setWarnings([]);
     setCandidates(null);
+    loaded.current.clear(); // new search, fresh data
 
     try {
       const url = new URL('/api/opponents/search', location.origin);
@@ -77,6 +113,8 @@ export default function ScoutPage() {
       if (best && best.score >= 0.85 && (!second || best.score - second.score >= 0.25)) {
         pickOpponent(best);
       }
+      // start loading the most likely ones in the background
+      (data.candidates as Candidate[]).slice(0, 3).forEach((c) => loadOpponent(c).catch(() => {}));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -84,28 +122,12 @@ export default function ScoutPage() {
     }
   };
 
-  // Load everything about the chosen player
+  // Show the chosen player
   const pickOpponent = async (candidate: Candidate) => {
     setLoadingTag(candidate.tag);
     setError('');
-    const tag = encodeURIComponent(candidate.tag);
     try {
-      const [profileRes, logRes, history] = await Promise.all([
-        fetch(`/api/players/${tag}`),
-        fetch(`/api/players/${tag}/battlelog`),
-        fetch(`/api/encounters?opponent=${tag}${myTag ? `&myTag=${encodeURIComponent(myTag)}` : ''}`)
-          .then((r) => (r.ok ? r.json() : []))
-          .catch(() => []),
-      ]);
-      const battles = await logRes.json();
-      if (!logRes.ok) throw new Error(battles.error || 'Could not load their battle log');
-
-      setOpponent({
-        candidate,
-        profile: profileRes.ok ? await profileRes.json() : null,
-        battles,
-        history,
-      });
+      setOpponent(await loadOpponent(candidate));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -118,8 +140,8 @@ export default function ScoutPage() {
       {/* search */}
       <div className="space-y-4">
         <Card className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold">Scout opponent</h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="whitespace-nowrap text-xl font-bold">Scout opponent</h1>
             <PhoneListener
               onReceive={(name, clan) => {
                 setUsername(name);
@@ -196,7 +218,13 @@ export default function ScoutPage() {
       {/* chosen opponent */}
       <div>
         {opponent ? (
-          <OpponentPanel opponent={opponent} gameTypes={gameTypes} setGameTypes={setGameTypes} />
+          <OpponentPanel
+            key={opponent.candidate.tag}
+            opponent={opponent}
+            myTag={myTag}
+            gameTypes={gameTypes}
+            setGameTypes={setGameTypes}
+          />
         ) : (
           <EmptyState>
             Search for your opponent, or send their name from your phone.
@@ -266,13 +294,19 @@ function CandidateRow({
 
 function OpponentPanel({
   opponent: { candidate, profile, battles, history },
+  myTag,
   gameTypes,
   setGameTypes,
 }: {
   opponent: Opponent;
+  myTag: string;
   gameTypes: string[];
   setGameTypes: (next: string[]) => void;
 }) {
+  // the deck the matchup section looks at: the one you pick, else their last used deck
+  const [picked, setPicked] = useState<CardInfo[] | null>(null);
+  const focused = picked ?? recentDecks(battles, battleTypesFor(gameTypes)).latest;
+
   const wins = history.filter((h) => h.result === 'win').length;
   const losses = history.filter((h) => h.result === 'loss').length;
   const clan = profile?.clan ?? (candidate.clanName ? { name: candidate.clanName, badgeId: candidate.clanBadgeId } : null);
@@ -325,7 +359,12 @@ function OpponentPanel({
           <SectionTitle right={<GameTypeFilter selected={gameTypes} onChange={setGameTypes} />}>
             Recent decks
           </SectionTitle>
-          <RecentDecks battles={battles} types={battleTypesFor(gameTypes)} />
+          <RecentDecks
+            battles={battles}
+            types={battleTypesFor(gameTypes)}
+            focused={myTag ? focused : null}
+            onFocus={myTag ? setPicked : undefined}
+          />
         </Card>
 
         {profile?.currentDeck && (
@@ -343,6 +382,8 @@ function OpponentPanel({
           </Card>
         )}
       </div>
+
+      {myTag && focused && <Matchups myTag={myTag} deck={focused} />}
 
       {history.length > 0 && (
         <section>
@@ -377,14 +418,14 @@ function PhoneListener({ onReceive }: { onReceive: (name: string, clan: string) 
 
   return (
     <span
-      className="flex items-center gap-1.5 text-xs text-muted"
+      className="flex min-w-0 items-center gap-1.5 text-xs text-muted"
       title="Send a name from the iPhone shortcut (see README) and it is searched right away"
     >
-      <FiSmartphone />
+      <FiSmartphone className="shrink-0" />
       {last ? (
-        <>
-          received “<bdi>{last.name}</bdi>” {timeAgo(new Date(last.at))}
-        </>
+        <span className="truncate">
+          <bdi>{last.name}</bdi> · {timeAgo(new Date(last.at))}
+        </span>
       ) : (
         <>
           <span className="h-2 w-2 animate-pulse rounded-full bg-win" /> listening

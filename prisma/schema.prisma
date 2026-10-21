@@ -53,12 +53,3 @@ model Encounter {
   @@unique([myTag, opponentId, playedAt])
   @@index([myTag, playedAt])
 }
-
-// Not used at the moment: battle log cards come with their own icons.
-// Kept for now, can be removed together with /admin and /api/cards.
-model CardImage {
-  id      Int     @id @default(autoincrement())
-  name    String  @unique
-  iconUrl String
-  evoUrl  String?
-}
