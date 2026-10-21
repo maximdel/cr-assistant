@@ -3,7 +3,7 @@
 import { timeAgo } from '@/lib/format';
 import { ALL_GAME_TYPES, battleTypesFor, gameTypeLabel } from '@/lib/gameTypes';
 import { parseBattleTime, type BattleLogEntry } from '@/types/battle';
-import type { PlayerProfile, UpcomingChests } from '@/types/player';
+import type { PlayerProfile } from '@/types/player';
 import type { Preset } from '@/types/preset';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
@@ -13,11 +13,10 @@ import ClanBadge from '../components/ClanBadge';
 import DeckDisplay from '../components/DeckDisplay';
 import { GameTypeFilter } from '../components/GameTypeFilter';
 import RecentDecks from '../components/RecentDecks';
-import { Button, Card, EmptyState, ErrorText, Input, Pill, SectionTitle, Spinner } from '../components/ui';
+import { Button, Card, EmptyState, ErrorText, Input, SectionTitle, Spinner } from '../components/ui';
 
 type PlayerInfo = {
   profile: PlayerProfile;
-  chests: UpcomingChests | null;
   battles: BattleLogEntry[];
 };
 
@@ -55,15 +54,13 @@ function Players() {
     setLoading(true);
     Promise.all([
       fetch(`/api/players/${t}`),
-      fetch(`/api/players/${t}/upcomingchests`),
       fetch(`/api/players/${t}/battlelog`),
     ])
-      .then(async ([playerRes, chestsRes, logRes]) => {
+      .then(async ([playerRes, logRes]) => {
         const profile = await playerRes.json();
         if (!playerRes.ok) throw new Error(profile.error === 'notFound' ? 'Player not found 😢' : profile.error);
         const info = {
           profile,
-          chests: chestsRes.ok ? await chestsRes.json() : null,
           battles: logRes.ok ? await logRes.json() : [],
         };
         if (!cancelled) {
@@ -176,7 +173,7 @@ function Players() {
 }
 
 function PlayerView({
-  info: { profile, chests, battles },
+  info: { profile, battles },
   saved,
   onToggleSaved,
 }: {
@@ -232,46 +229,31 @@ function PlayerView({
           <RecentDecks battles={battles} types={battleTypesFor(gameTypes)} />
         </Card>
 
-        <div className="space-y-4">
-          <Card>
-            <SectionTitle>Recent battles</SectionTitle>
-            <ul className="space-y-2">
-              {battles.slice(0, 10).map((b, i) => {
-                const [me, opp] = [b.team[0], b.opponent[0]];
-                const result = me.crowns > opp.crowns ? 'win' : me.crowns < opp.crowns ? 'loss' : 'draw';
-                const color = { win: 'text-win', loss: 'text-loss', draw: 'text-draw' }[result];
-                return (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    <span className={`w-8 font-semibold ${color}`}>
-                      {me.crowns}-{opp.crowns}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">
-                      {opp.name}
-                      {b.opponent.length > 1 && ' + 1'}
-                    </span>
-                    <span className="text-xs text-muted">
-                      {gameTypeLabel(b.type)} · {timeAgo(parseBattleTime(b.battleTime))}
-                    </span>
-                  </li>
-                );
-              })}
-              {!battles.length && <li className="text-sm text-muted">No battles yet.</li>}
-            </ul>
-          </Card>
-
-          {chests && (
-            <Card>
-              <SectionTitle>Upcoming chests</SectionTitle>
-              <div className="flex flex-wrap gap-1.5">
-                {chests.items.map((c, i) => (
-                  <Pill key={i} className={c.index === 0 ? 'bg-accent/15 text-accent' : undefined}>
-                    {c.index === 0 ? 'Next' : `+${c.index}`} · {c.name}
-                  </Pill>
-                ))}
-              </div>
-            </Card>
-          )}
-        </div>
+        <Card>
+          <SectionTitle>Recent battles</SectionTitle>
+          <ul className="space-y-2">
+            {battles.slice(0, 10).map((b, i) => {
+              const [me, opp] = [b.team[0], b.opponent[0]];
+              const result = me.crowns > opp.crowns ? 'win' : me.crowns < opp.crowns ? 'loss' : 'draw';
+              const color = { win: 'text-win', loss: 'text-loss', draw: 'text-draw' }[result];
+              return (
+                <li key={i} className="flex items-center gap-2 text-sm">
+                  <span className={`w-8 font-semibold ${color}`}>
+                    {me.crowns}-{opp.crowns}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {opp.name}
+                    {b.opponent.length > 1 && ' + 1'}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {gameTypeLabel(b.type)} · {timeAgo(parseBattleTime(b.battleTime))}
+                  </span>
+                </li>
+              );
+            })}
+            {!battles.length && <li className="text-sm text-muted">No battles yet.</li>}
+          </ul>
+        </Card>
       </div>
     </div>
   );

@@ -15,7 +15,3 @@ export interface PlayerProfile {
   currentPathOfLegendSeasonResult?: { leagueNumber: number; trophies: number; rank: number | null };
   bestPathOfLegendSeasonResult?: { leagueNumber: number; trophies: number; rank: number | null };
 }
-
-export interface UpcomingChests {
-  items: { index: number; name: string }[];
-}
