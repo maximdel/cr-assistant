@@ -1,12 +1,13 @@
 // lib/names.ts
 // Fuzzy name matching, for names that were typed, OCR'd or full of fancy characters.
 
-// Some names carry color tags from the game: "<c3>SgtStank" -> "SgtStank"
-export const cleanName = (name: string) => name.replace(/<\/?c\d*>/gi, '').trim();
+// Some names contain color tags that the game shows as-is ("<c3>SgtStank"). They're part
+// of the real name, but ignored when matching, in case the screenshot reading misses them.
+const withoutColorTags = (name: string) => name.replace(/<\/?c\d*>/gi, '').trim();
 
 // "ⓍⓄⓇⒼ" -> "xorg", "《☆》ᴿᶻbnzin" -> "rzbnzin", "Mnak-Áhr⁵⁰³" -> "mnakahr503"
 export function simplify(name: string) {
-  const s = cleanName(name)
+  const s = withoutColorTags(name)
     .normalize('NFKC') // fancy unicode letters -> normal ones
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '') // accents

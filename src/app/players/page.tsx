@@ -14,7 +14,6 @@ import DeckDisplay from '../components/DeckDisplay';
 import { GameTypeFilter } from '../components/GameTypeFilter';
 import RecentDecks from '../components/RecentDecks';
 import { Button, Card, EmptyState, ErrorText, Input, SectionTitle, Spinner } from '../components/ui';
-import { cleanName } from '@/lib/names';
 
 type PlayerInfo = {
   profile: PlayerProfile;
@@ -190,7 +189,7 @@ function PlayerView({
         <div className="space-y-3">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold">
-              {cleanName(profile.name)}
+              {profile.name}
               <ClanBadge badgeId={profile.clan?.badgeId} size={26} />
             </h2>
             <p className="text-sm text-muted">
@@ -243,7 +242,7 @@ function PlayerView({
                     {me.crowns}-{opp.crowns}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
-                    {cleanName(opp.name)}
+                    {opp.name}
                     {b.opponent.length > 1 && ' + 1'}
                   </span>
                   <span className="text-xs text-muted">

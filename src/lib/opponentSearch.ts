@@ -7,7 +7,7 @@
 //    right now, which is the best hint since your opponent is in a match with you
 // 3) Path of Legends leaderboards (global + the countries you pass), for high ranked players
 import { clashApi, normalizeTag } from '@/lib/clashApi';
-import { cleanName, nameSimilarity } from '@/lib/names';
+import { nameSimilarity } from '@/lib/names';
 import { parseApiTime } from '@/lib/format';
 import { prisma } from '@/lib/prisma';
 import type { Candidate } from '@/types/search';
@@ -40,7 +40,6 @@ export async function searchOpponents({
     found.set(c.tag, {
       ...existing,
       ...withoutEmpty(c),
-      name: cleanName(c.name),
       score,
       sources: [...(existing?.sources ?? []), source],
     });

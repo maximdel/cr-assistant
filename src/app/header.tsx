@@ -11,7 +11,6 @@ import { FiChevronDown, FiRefreshCw } from 'react-icons/fi';
 import { GiTrophyCup } from 'react-icons/gi';
 import { useOnClickOutside } from 'usehooks-ts';
 import { Button, Input } from './components/ui';
-import { cleanName } from '@/lib/names';
 
 const NAV = [
   { href: '/', label: 'Home' },
@@ -149,10 +148,10 @@ function PlayerChip() {
         className="flex items-center gap-2 rounded-lg border border-border bg-surface px-2 py-1 text-left hover:border-muted"
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent/15 text-sm font-bold text-accent">
-          {cleanName(profile?.name ?? '?').slice(0, 1).toUpperCase()}
+          {(profile?.name ?? '?').slice(0, 1).toUpperCase()}
         </span>
         <span className="leading-tight">
-          <span className="block text-sm font-medium">{profile ? cleanName(profile.name) : myTag}</span>
+          <span className="block text-sm font-medium">{profile?.name ?? myTag}</span>
           {profile ? (
             <span className="flex items-center gap-1 text-xs text-accent">
               <GiTrophyCup /> {profile.trophies.toLocaleString()}
@@ -167,7 +166,7 @@ function PlayerChip() {
       {open && (
         <div className="absolute right-0 mt-2 w-72 space-y-3 rounded-xl border border-border bg-surface p-4 shadow-xl">
           <div>
-            <p className="font-medium">{profile ? cleanName(profile.name) : 'Your account'}</p>
+            <p className="font-medium">{profile?.name ?? 'Your account'}</p>
             <p className="text-xs text-muted">
               {myTag}
               {profile?.clan && (
