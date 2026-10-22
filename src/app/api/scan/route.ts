@@ -79,6 +79,6 @@ function deckImageUrl(req: Request, deck: CardInfo[]) {
   const base =
     process.env.PUBLIC_URL ??
     `${req.headers.get('x-forwarded-proto') ?? 'http'}://${req.headers.get('x-forwarded-host') ?? req.headers.get('host')}`;
-  const cards = deck.map((c) => (c.evolutionLevel ? `${c.id}.${c.evolutionLevel}` : c.id)).join(';');
+  const cards = deck.map((c) => (c.evolutionLevel ? `${c.id}.${c.evolutionLevel}` : c.id)).join(',');
   return `${base}/api/deck-image?deck=${cards}`;
 }

@@ -1,4 +1,4 @@
-// GET ?deck=26000014.1;26000006.2;26000010;... -> PNG of the deck (4 x 2 cards)
+// GET ?deck=26000014.1,26000006.2,26000010,... -> PNG of the deck (4 x 2 cards)
 // Each card is "id" or "id.evolutionLevel" (1 = evolution, 2 = hero).
 // Used for the picture in the phone notification.
 import { clashApi, errorResponse } from '@/lib/clashApi';
@@ -11,7 +11,7 @@ const GAP = 8;
 
 export async function GET(req: Request) {
   const deck = (new URL(req.url).searchParams.get('deck') ?? '')
-    .split(';')
+    .split(/[,;]/) // commas: proxies like `tailscale serve` drop queries containing ";"
     .filter(Boolean)
     .slice(0, 8)
     .map((c) => c.split('.').map(Number));

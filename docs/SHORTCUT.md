@@ -51,7 +51,7 @@ The answer looks like this:
   "found": true,
   "title": "Ryu · But Destroy",
   "body": "Evo Furnace, Golden Knight, Hero Tombstone, Barbarian Barrel, Bats, …",
-  "image": "https://YOUR-SERVER/api/deck-image?deck=27000010.1;26000074;…",
+  "image": "https://YOUR-SERVER/api/deck-image?deck=27000010.1,26000074,…",
   "lines": ["Ryu", "But Destroy"]
 }
 ```
