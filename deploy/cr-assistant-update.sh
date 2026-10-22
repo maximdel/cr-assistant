@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pulls origin/main, and if it changed: install (if needed), migrate, lint, build, restart.
+# Pulls origin/main, and if it changed: install and migrate (if needed), lint, build, restart.
 # If any step fails it rolls back to the previous commit, keeps running that, sends an
 # alert, and doesn't retry that same commit again.
 # Run by cr-assistant-update.timer; logs: journalctl -u cr-assistant-update
@@ -23,7 +23,7 @@ main() {
   echo "Updating ${old:0:7} -> ${new:0:7}: $subject"
   git reset -q --hard "$new"
 
-  if install_if_needed "$old" "$new" && npx prisma migrate deploy && npm run lint && npm run build; then
+  if install_if_needed "$old" "$new" && migrate_if_needed "$old" "$new" && npm run lint && npm run build; then
     sudo systemctl restart cr-assistant.service
     rm -f "$failed_file"
     echo "Deployed ${new:0:7}"
@@ -43,6 +43,19 @@ main() {
 install_if_needed() {
   git diff --quiet "$1" "$2" -- package.json package-lock.json && [ -d node_modules ] && return 0
   npm ci
+}
+
+# prisma migrate deploy only when there are new migrations. The running app (match sync)
+# can briefly hold the database lock, so retry a few times instead of failing on it.
+migrate_if_needed() {
+  git diff --quiet "$1" "$2" -- prisma/migrations && return 0
+  local i
+  for i in 1 2 3 4 5; do
+    npx prisma migrate deploy && return 0
+    echo "Migration failed (attempt $i), retrying in 5 s" >&2
+    sleep 5
+  done
+  return 1
 }
 
 main "$@"

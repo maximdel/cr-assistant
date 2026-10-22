@@ -9,6 +9,7 @@ declare global {
 
 const adapter = new PrismaBetterSqlite3({
   url: process.env.DATABASE_URL ?? 'file:./prisma/dev.db',
+  timeout: 5000, // wait up to 5 s for a busy database (migration, backup) instead of failing
 });
 
 export const prisma = global.prisma || new PrismaClient({ adapter });
