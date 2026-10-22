@@ -18,8 +18,20 @@ export async function syncMatches(tag: string) {
     (b) => SYNCED_TYPES.includes(b.type) && b.team.length === 1 && b.opponent.length === 1
   );
 
+  // skip battles we already have, with one read: then a sync with nothing new doesn't
+  // write at all (writes lock the database, and this runs every 2 minutes)
+  const key = (oppTag: string, playedAt: Date) => `${oppTag}|${playedAt.toISOString()}`;
+  const existing = await prisma.encounter.findMany({
+    where: { myTag, playedAt: { in: battles.map((b) => parseBattleTime(b.battleTime)) } },
+    select: { playedAt: true, opponent: { select: { tag: true } } },
+  });
+  const saved = new Set(existing.map((e) => key(e.opponent.tag, e.playedAt)));
+  const fresh = battles.filter(
+    (b) => !saved.has(key(b.opponent[0].tag, parseBattleTime(b.battleTime)))
+  );
+
   const newIds: number[] = [];
-  for (const b of battles) {
+  for (const b of fresh) {
     const me = b.team[0];
     const opp = b.opponent[0];
     const playedAt = parseBattleTime(b.battleTime);
