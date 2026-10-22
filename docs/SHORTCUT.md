@@ -50,11 +50,14 @@ The answer looks like this:
 {
   "found": true,
   "title": "Ryu · But Destroy",
-  "body": "Barrel Cycle · you 1W 0L",
+  "body": "Barrel Cycle · 1W 0L vs them",
   "image": "https://YOUR-SERVER/api/deck-image?deck=27000010.1,26000074,…",
   "lines": ["Ryu", "But Destroy"]
 }
 ```
+The record ("1W 0L vs them") is your saved matches against this player; it's left out
+the first time you meet them.
+
 When nobody is found, `title` says so and `body` shows what was read, so you can see
 if the text came out wrong. (`image` is then empty and step 5 just gets nothing.)
 

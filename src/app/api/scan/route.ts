@@ -2,12 +2,13 @@
 // The iPhone shortcut posts the text of an in-match screenshot here.
 // We find the opponent, and answer with what the shortcut shows as a notification:
 //   title = their name · clan (so you can check what was read)
-//   body  = their deck's archetype ("Log Bait"), and your record against them
+//   body  = their deck's archetype ("Log Bait"), and your record against this player
 //   image = picture of the deck
 // The Scout page also opens them (through the phone push).
 import { deckArchetype } from '@/lib/archetype';
 import { clashApi, errorResponse, normalizeTag } from '@/lib/clashApi';
 import { recentDecks } from '@/lib/deck';
+import { deckParam, parseDeckParam, renderDeckImage } from '@/lib/deckImage';
 import { SYNCED_TYPES } from '@/lib/gameTypes';
 import { searchOpponents } from '@/lib/opponentSearch';
 import { push } from '@/lib/phonePush';
@@ -37,11 +38,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ found: false, title: 'Nothing read', body: 'No text found on the screenshot.', lines });
     }
 
-    // try each guess, keep the best match overall
-    const results = await Promise.all(guesses.map((g) => searchOpponents(g)));
-    const best = results
-      .flatMap((r) => r.candidates)
-      .sort((a, b) => b.score - a.score)[0] as Candidate | undefined;
+    // the first guess (top two lines) is nearly always right: only try the others if it
+    // finds nobody convincing, which saves a lot of API calls
+    const bestOf = (results: { candidates: Candidate[] }[]) =>
+      results.flatMap((r) => r.candidates).sort((a, b) => b.score - a.score)[0] as
+        | Candidate
+        | undefined;
+    let best = bestOf([await searchOpponents(guesses[0])]);
+    if (!best || best.score < 0.85) {
+      const others = await Promise.all(guesses.slice(1).map((g) => searchOpponents(g)));
+      best = bestOf([{ candidates: best ? [best] : [] }, ...others]);
+    }
 
     if (!best) {
       const g = guesses[0];
@@ -57,6 +64,9 @@ export async function POST(req: Request) {
     const log = await clashApi<BattleLogEntry[]>(`/players/${encodeURIComponent(best.tag)}/battlelog`);
     const deck = recentDecks(log, ['pathOfLegend']).latest ?? recentDecks(log, SYNCED_TYPES).latest;
 
+    // start drawing the picture now: it's ready by the time the shortcut asks for it
+    if (deck) renderDeckImage(parseDeckParam(deckParam(deck))).catch(() => {});
+
     // open them on the Scout page too
     push(best.name, best.clanName ?? '');
 
@@ -68,7 +78,7 @@ export async function POST(req: Request) {
         })
       : [];
     const record = met.length
-      ? ` · you ${met.filter((r) => r.result === 'win').length}W ${met.filter((r) => r.result === 'loss').length}L`
+      ? ` · ${met.filter((r) => r.result === 'win').length}W ${met.filter((r) => r.result === 'loss').length}L vs them`
       : '';
 
     return NextResponse.json({
@@ -89,6 +99,5 @@ function deckImageUrl(req: Request, deck: CardInfo[]) {
   const base =
     process.env.PUBLIC_URL ??
     `${req.headers.get('x-forwarded-proto') ?? 'http'}://${req.headers.get('x-forwarded-host') ?? req.headers.get('host')}`;
-  const cards = deck.map((c) => (c.evolutionLevel ? `${c.id}.${c.evolutionLevel}` : c.id)).join(',');
-  return `${base}/api/deck-image?deck=${cards}`;
+  return `${base}/api/deck-image?deck=${deckParam(deck)}`;
 }

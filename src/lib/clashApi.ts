@@ -16,14 +16,18 @@ export function normalizeTag(raw: string) {
   return `#${tag}`;
 }
 
-// short in-memory cache, for things that don't change every second (leaderboards, locations)
-const cache = new Map<string, { until: number; data: unknown }>();
+// short in-memory cache, for things that don't change every second (leaderboards, locations).
+// On globalThis: API routes and instrumentation can be separate module copies.
+const g = globalThis as typeof globalThis & {
+  clashApiCache?: Map<string, { until: number; data: unknown }>;
+};
+const cache = (g.clashApiCache ??= new Map());
 
 // Fetch a path like `/players/${encodeURIComponent(tag)}` and return the JSON.
-// Pass cacheSeconds to reuse the answer for a while.
-export async function clashApi<T>(path: string, cacheSeconds = 0): Promise<T> {
+// Pass cacheSeconds to reuse the answer for a while; refresh = fetch anyway and re-cache.
+export async function clashApi<T>(path: string, cacheSeconds = 0, refresh = false): Promise<T> {
   const cached = cache.get(path);
-  if (cached && cached.until > Date.now()) return cached.data as T;
+  if (!refresh && cached && cached.until > Date.now()) return cached.data as T;
 
   const data = await fetchApi<T>(path);
   if (cacheSeconds) cache.set(path, { until: Date.now() + cacheSeconds * 1000, data });
