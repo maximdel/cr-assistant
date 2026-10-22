@@ -42,7 +42,7 @@ CR_API_BASE_URL=https://proxy.royaleapi.dev/v1
 
 ## Auto-saving your matches
 
-Click **Sync off** in the header (or use the switch on the home page). While the app is open, on any page, it checks your battle log every 2 minutes and saves new 1v1 Ladder, Ranked, Challenge and Clan War battles. Events, friendlies and boat battles are skipped. Sync stays on after you reload. Newly saved matches are marked **new** in the list on the home page; click a match to see both decks.
+Click **Sync off** in the header (or use the switch on the home page). When the app runs on a server with `SYNC_TAG` set, the server does this by itself and the header shows **Synced … ago** instead. While the app is open, on any page, it checks your battle log every 2 minutes and saves new 1v1 Ladder, Ranked, Challenge and Clan War battles. Events, friendlies and boat battles are skipped. Sync stays on after you reload. Newly saved matches are marked **new** in the list on the home page; click a match to see both decks.
 
 ## How Scout finds your opponent
 
@@ -60,26 +60,17 @@ Tips:
 - **Recently scouted** keeps your last 10 lookups one click away, and shows how each match went once sync has saved it.
 - The "How you do against this deck" section uses the deck they used last. Click *My record vs this* on another deck to check that one instead.
 
-## Sending your opponent from your phone (iPhone Shortcut)
+## Scouting from your phone
 
-At the start of a match, a Shortcut on your phone can screenshot the game, read the opponent's name and clan, and send them to the app. The Scout page then searches and shows their decks on its own. This is also the easiest way to search clan names in scripts you can't type: iOS text recognition handles many scripts, including Chinese, Japanese and Korean.
+During a match, double-tap the back of your iPhone: a Shortcut screenshots the game,
+iOS reads your opponent's name and clan, and a notification shows who it found and
+their deck, with a picture of the cards. Set it up with **[docs/SHORTCUT.md](docs/SHORTCUT.md)**.
 
-1. Start the app so your phone can reach it (same Wi‑Fi):
-   ```bash
-   npm run dev:phone
-   ```
-   Find your computer's local IP (on a Mac: `ipconfig getifaddr en0`).
-2. In the **Shortcuts** app, create a shortcut with:
-   - **Take Screenshot**
-   - **Extract Text from Image** (optionally crop the screenshot to the name area first, for cleaner results)
-   - **Get Contents of URL**: `http://<your-computer-ip>:3000/api/shortcut/text`, method **POST**, request body **JSON**, with either
-     - `name` and `clan` fields, or
-     - a single `text` field (the first line is read as the name, the second as the clan)
-3. Tip: trigger it with **Back Tap** (Settings → Accessibility → Touch → Back Tap) so it's one double-tap on the back of your phone.
+## Hosting it on a home server
 
-Keep the Scout page open on your computer (or tablet) and it'll update within a second.
-
-> `npm run dev` only listens on your own computer. `npm run dev:phone` makes the app reachable by other devices on your network, so only use it on a network you trust.
+Run the app on an always-on machine, reachable privately from your phone through
+Tailscale. The server then also saves your matches by itself, with no browser open, and
+updates itself when you push to GitHub. See **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
 ## Scripts
 
@@ -112,7 +103,7 @@ scripts/          setup script
 
 - **"API key not allowed from this IP"**: your IP changed. Update the key's allowed IPs, or use the proxy (see above).
 - **"CR_API_TOKEN is not set"**: add your key to `.env` and restart the app.
-- **The phone shortcut doesn't reach the app**: use `npm run dev:phone`, check that both devices are on the same Wi‑Fi, and check the IP in the shortcut.
+- **The phone shortcut doesn’t reach the app**: on a server, check the Tailscale VPN is on in your phone; locally, use `npm run dev:phone` with both devices on the same Wi‑Fi. Check the URL in the shortcut.
 
 ---
 

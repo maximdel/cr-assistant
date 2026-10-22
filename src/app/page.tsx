@@ -12,6 +12,7 @@ import ClanBadge from './components/ClanBadge';
 import DeckDisplay from './components/DeckDisplay';
 import MatchList from './components/MatchList';
 import { Button, Card, ErrorText, Input, SectionTitle } from './components/ui';
+import { cleanName } from '@/lib/names';
 
 export default function Home() {
   const [myTag] = useMyTag();
@@ -100,7 +101,7 @@ function Dashboard({ myTag }: { myTag: string }) {
         <Card className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-3">
             <div>
-              <h1 className="text-2xl font-bold">{profile?.name ?? myTag}</h1>
+              <h1 className="text-2xl font-bold">{profile ? cleanName(profile.name) : myTag}</h1>
               <p className="flex items-center gap-1.5 text-sm text-muted">
                 {myTag}
                 {profile?.clan && (

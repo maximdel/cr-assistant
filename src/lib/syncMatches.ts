@@ -6,6 +6,7 @@ import { clashApi, normalizeTag } from '@/lib/clashApi';
 import { SYNCED_TYPES } from '@/lib/gameTypes';
 import { prisma } from '@/lib/prisma';
 import { parseBattleTime, type BattleLogEntry } from '@/types/battle';
+import { cleanName } from '@/lib/names';
 
 const asJson = (value: unknown) => value as Prisma.InputJsonValue;
 
@@ -35,8 +36,8 @@ export async function syncMatches(tag: string) {
 
     const player = await prisma.player.upsert({
       where: { tag: opp.tag },
-      update: { name: opp.name, clanId: clan?.id ?? null },
-      create: { tag: opp.tag, name: opp.name, clanId: clan?.id },
+      update: { name: cleanName(opp.name), clanId: clan?.id ?? null },
+      create: { tag: opp.tag, name: cleanName(opp.name), clanId: clan?.id },
     });
 
     // 2) Skip battles we already have

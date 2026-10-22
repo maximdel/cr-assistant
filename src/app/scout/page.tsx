@@ -20,6 +20,7 @@ import MatchList from '../components/MatchList';
 import Matchups from '../components/Matchups';
 import RecentDecks from '../components/RecentDecks';
 import { Button, Card, EmptyState, ErrorText, Input, Pill, SectionTitle, Spinner } from '../components/ui';
+import { cleanName } from '@/lib/names';
 
 // opponents you looked at, kept in the browser
 type RecentScout = { tag: string; name: string; clanName?: string; clanBadgeId?: number; at: number };
@@ -336,7 +337,7 @@ function OpponentPanel({
       <Card className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="flex items-center gap-2 text-2xl font-bold">
-            {profile?.name ?? candidate.name}
+            {profile ? cleanName(profile.name) : candidate.name}
             <ClanBadge badgeId={clan?.badgeId} size={26} />
           </h2>
           <p className="text-sm text-muted">

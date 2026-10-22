@@ -8,6 +8,7 @@ import { FiPlus, FiX } from 'react-icons/fi';
 import { useLocalStorage, useOnClickOutside } from 'usehooks-ts';
 import ClanBadge from '../components/ClanBadge';
 import { Card, EmptyState, ErrorText, Input, Spinner } from '../components/ui';
+import { cleanName } from '@/lib/names';
 
 interface Player {
   rank: number;
@@ -166,7 +167,7 @@ export default function RankingsPage() {
                         <div className="flex items-center gap-2">
                           <ClanBadge badgeId={p.clan?.badgeId} size={20} />
                           <div className="min-w-0">
-                            <p className="truncate font-medium">{p.name}</p>
+                            <p className="truncate font-medium">{cleanName(p.name)}</p>
                             <p className="truncate text-xs text-muted">{p.clan?.name ?? 'No clan'}</p>
                           </div>
                         </div>
