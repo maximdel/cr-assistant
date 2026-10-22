@@ -58,6 +58,10 @@ The answer looks like this:
 When nobody is found, `title` says so and `body` shows what was read, so you can see
 if the text came out wrong. (`image` is then empty and step 5 just gets nothing.)
 
+**See the cards big:** the picture next to the notification text is a small thumbnail
+(iOS decides its size). **Long-press the notification** (or pull it down) to expand it:
+the deck then fills the width of the screen, 3 cards per row.
+
 ## Trigger it without leaving the game
 - **iPhone: Back Tap.** Settings → Accessibility → Touch → **Back Tap** → Double Tap →
   pick your Shortcut. Double-tap the back of the phone during a match.

@@ -1,13 +1,17 @@
-// GET ?deck=26000014.1,26000006.2,26000010,... -> PNG of the deck (4 x 2 cards)
+// GET ?deck=26000014.1,26000006.2,26000010,... -> PNG of the deck
 // Each card is "id" or "id.evolutionLevel" (1 = evolution, 2 = hero).
-// Used for the picture in the phone notification.
+// Used for the picture in the phone notification. It's square (3 x 3: the 8 cards and
+// the average elixir), because iOS crops notification thumbnails to a square, and an
+// expanded notification shows it at full width, so each card gets a third of the screen.
 import { clashApi, errorResponse } from '@/lib/clashApi';
 import type { CardInfo } from '@/types/battle';
 import { ImageResponse } from 'next/og';
 
-const CARD_W = 150;
-const CARD_H = 180;
-const GAP = 8;
+const CARD_W = 200;
+const CARD_H = 240;
+const GAP = 6;
+const SIZE_W = CARD_W * 3 + GAP * 4;
+const SIZE_H = CARD_H * 3 + GAP * 4;
 
 export async function GET(req: Request) {
   const deck = (new URL(req.url).searchParams.get('deck') ?? '')
@@ -24,12 +28,17 @@ export async function GET(req: Request) {
     return errorResponse(err);
   }
   const byId = new Map(cards.map((c) => [c.id, c]));
-  const images = deck.map(([id, evo]) => {
-    const icons = byId.get(id)?.iconUrls;
+  const deckCards = deck.map(([id, evo]) => ({ card: byId.get(id), evo }));
+  const images = deckCards.map(({ card, evo }) => {
+    const icons = card?.iconUrls;
     return (
       (evo === 1 && icons?.evolutionMedium) || (evo === 2 && icons?.heroMedium) || icons?.medium
     );
   });
+  const costs = deckCards.map(({ card }) => card?.elixirCost).filter((c) => c != null);
+  const avg = costs.length ? (costs.reduce((a, b) => a + b, 0) / costs.length).toFixed(1) : '?';
+
+  const tile = { width: CARD_W, height: CARD_H, display: 'flex' } as const;
 
   return new ImageResponse(
     <div
@@ -38,7 +47,8 @@ export async function GET(req: Request) {
         flexWrap: 'wrap',
         gap: GAP,
         padding: GAP,
-        width: CARD_W * 4 + GAP * 5,
+        width: SIZE_W,
+        height: SIZE_H,
         background: '#0a0e1a',
       }}
     >
@@ -47,13 +57,28 @@ export async function GET(req: Request) {
           // eslint-disable-next-line @next/next/no-img-element
           <img key={i} src={src} width={CARD_W} height={CARD_H} alt="" />
         ) : (
-          <div key={i} style={{ width: CARD_W, height: CARD_H, background: '#1a2238' }} />
+          <div key={i} style={{ ...tile, background: '#1a2238' }} />
         ),
       )}
+      {/* 9th tile: average elixir */}
+      <div
+        style={{
+          ...tile,
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 16,
+          background: '#1a2238',
+          color: '#d158f0',
+        }}
+      >
+        <div style={{ fontSize: 96, fontWeight: 700 }}>{avg}</div>
+        <div style={{ fontSize: 30, color: '#8b93a9' }}>avg elixir</div>
+      </div>
     </div>,
     {
-      width: CARD_W * 4 + GAP * 5,
-      height: CARD_H * 2 + GAP * 3,
+      width: SIZE_W,
+      height: SIZE_H,
       headers: { 'Cache-Control': 'public, max-age=86400' },
     },
   );
