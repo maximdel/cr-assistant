@@ -83,6 +83,8 @@ updates itself when you push to GitHub. See **[docs/DEPLOY.md](docs/DEPLOY.md)**
 | `npm run db:studio` | Browse your saved data in Prisma Studio |
 | `npm run lint` | Lint the code |
 
+`npm run setup` also turns on two git hooks that refuse to commit or push private details (API keys, Tailscale names and IPs, home IPs, ntfy topics), since the repo is public. See `scripts/check-private.sh`.
+
 ## How it's built
 
 - [Next.js](https://nextjs.org) (App Router) + React + Tailwind CSS

@@ -15,6 +15,9 @@ if (!fs.existsSync('node_modules')) {
   run('npm install');
 }
 
+// git hooks: block commits/pushes that would publish private details (scripts/check-private.sh)
+if (fs.existsSync('.git')) run('git config core.hooksPath .githooks');
+
 // 2) .env
 if (!fs.existsSync('.env')) {
   step('Creating .env from .env.example');

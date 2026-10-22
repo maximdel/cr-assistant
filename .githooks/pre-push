@@ -1,0 +1,13 @@
+#!/bin/bash
+# Don't push private details (see scripts/check-private.sh).
+# stdin: <local ref> <local sha> <remote ref> <remote sha> per ref being pushed
+check="$(git rev-parse --show-toplevel)/scripts/check-private.sh"
+zero=0000000000000000000000000000000000000000
+while read -r _ local_sha _ remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # deleting a branch
+  if [ "$remote_sha" = "$zero" ] || ! git cat-file -e "$remote_sha" 2>/dev/null; then
+    "$check" range "$local_sha" --not --remotes || exit 1 # new branch / unknown remote history
+  else
+    "$check" range "$remote_sha..$local_sha" || exit 1
+  fi
+done
