@@ -42,6 +42,9 @@ In the **Shortcuts** app, tap **+** and add these actions in order:
 
 Name it something short like **Scout**.
 
+If the server has no `SYNC_TAG`, add a second JSON field in step 3: key `myTag`, value
+your tag (e.g. `#ABC123`), so your own name on screen isn't mistaken for the opponent.
+
 The answer looks like this:
 ```json
 {
