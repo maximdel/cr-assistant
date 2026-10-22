@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up the CR Assistant database every night
+
+[Timer]
+OnCalendar=*-*-* 03:45
+# If the machine was off at 03:45, back up as soon as it's on again.
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

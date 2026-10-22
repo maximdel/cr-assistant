@@ -1,0 +1,8 @@
+[Unit]
+Description=Back up the CR Assistant database
+OnFailure=cr-assistant-failed@%n.service
+
+[Service]
+Type=oneshot
+User=maxim
+ExecStart=/home/maxim/cr-assistant/deploy/cr-assistant-backup.sh

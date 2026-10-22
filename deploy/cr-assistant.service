@@ -1,0 +1,20 @@
+# CR Assistant (Next.js app + server auto-sync). Installed by deploy/install.sh.
+[Unit]
+Description=CR Assistant (Clash Royale scouting and match history)
+After=network-online.target
+Wants=network-online.target
+# Crashing 5 times within 10 minutes = give up and send an alert.
+StartLimitIntervalSec=10min
+StartLimitBurst=5
+OnFailure=cr-assistant-failed@%n.service
+
+[Service]
+User=maxim
+WorkingDirectory=/home/maxim/cr-assistant
+Environment=NODE_ENV=production
+ExecStart=/home/maxim/cr-assistant/node_modules/.bin/next start --port 8788 --hostname 127.0.0.1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

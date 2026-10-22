@@ -1,0 +1,9 @@
+[Unit]
+Description=Deploy new CR Assistant commits from GitHub main
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=maxim
+ExecStart=/home/maxim/cr-assistant/deploy/cr-assistant-update.sh

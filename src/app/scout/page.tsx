@@ -1,6 +1,7 @@
 'use client';
 import { minutesSince, timeAgo } from '@/lib/format';
 import { ALL_GAME_TYPES, battleTypesFor } from '@/lib/gameTypes';
+import { recentDecks } from '@/lib/deck';
 import { useSync } from '@/lib/sync';
 import { useCountryPresets } from '@/lib/useCountryPresets';
 import { useMyTag } from '@/lib/useMyTag';
@@ -17,7 +18,7 @@ import ClanBadge from '../components/ClanBadge';
 import { GameTypeFilter } from '../components/GameTypeFilter';
 import MatchList from '../components/MatchList';
 import Matchups from '../components/Matchups';
-import RecentDecks, { recentDecks } from '../components/RecentDecks';
+import RecentDecks from '../components/RecentDecks';
 import { Button, Card, EmptyState, ErrorText, Input, Pill, SectionTitle, Spinner } from '../components/ui';
 
 // opponents you looked at, kept in the browser

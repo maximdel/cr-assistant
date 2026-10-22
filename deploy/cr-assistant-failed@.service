@@ -1,0 +1,8 @@
+# Alert when a CR Assistant unit fails (used as OnFailure= by the other units)
+[Unit]
+Description=Alert: %i failed
+
+[Service]
+Type=oneshot
+User=maxim
+ExecStart=/home/maxim/cr-assistant/deploy/notify.sh "⚠️ %i failed" "Check: journalctl -u %i" 5

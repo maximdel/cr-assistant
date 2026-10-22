@@ -1,5 +1,6 @@
 'use client';
 
+import { timeAgo } from '@/lib/format';
 import { useSync } from '@/lib/sync';
 import { useMyProfile, useMyTag } from '@/lib/useMyTag';
 import Image from 'next/image';
@@ -58,8 +59,23 @@ export default function Header() {
 
 function SyncIndicator() {
   const [myTag] = useMyTag();
-  const { enabled, setEnabled, syncing, nextIn, error } = useSync();
+  const { enabled, setEnabled, syncing, nextIn, error, serverManaged, lastSync } = useSync();
   if (!myTag) return null;
+
+  // the server saves your matches on its own: just show that it's working
+  if (serverManaged) {
+    return (
+      <span
+        title={error ?? 'Your matches are saved by the server every 2 minutes'}
+        className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${
+          error ? 'border-loss/50 text-loss' : 'border-win/40 text-win'
+        }`}
+      >
+        <FiRefreshCw />
+        {error ? 'Sync error' : lastSync ? `Synced ${timeAgo(lastSync.at)}` : 'Server sync'}
+      </span>
+    );
+  }
 
   return (
     <button

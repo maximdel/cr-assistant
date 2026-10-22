@@ -1,16 +1,17 @@
-// The iPhone shortcut POSTs the opponent's name (and clan) read from a screenshot,
-// the /playing page polls GET and searches as soon as something new arrives.
+// The Scout page polls GET and searches as soon as something new arrives.
+// POST is the simple version for a shortcut that already knows the name and clan;
+// a shortcut sending a whole screenshot's text should use POST /api/scan instead.
+import { lastPush, push } from '@/lib/phonePush';
 import { NextResponse } from 'next/server';
 
-// kept in memory: only the latest push matters
-let last = { id: 0, name: '', clan: '' };
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  return NextResponse.json(last);
+  return NextResponse.json(lastPush());
 }
 
 // Body: { "name": "...", "clan": "..." }
-// or { "text": "..." }: raw OCR text, first line = name, second line = clan
+// or { "text": "..." }: first line = name, second line = clan
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const lines = String(body.text ?? '')
@@ -18,10 +19,6 @@ export async function POST(req: Request) {
     .map((l: string) => l.trim())
     .filter(Boolean);
 
-  last = {
-    id: Date.now(), // so pushing the same name twice still triggers a new search
-    name: String(body.name ?? lines[0] ?? '').trim(),
-    clan: String(body.clan ?? lines[1] ?? '').trim(),
-  };
-  return NextResponse.json({ ok: true, ...last });
+  const sent = push(String(body.name ?? lines[0] ?? ''), String(body.clan ?? lines[1] ?? ''));
+  return NextResponse.json({ ok: true, ...sent });
 }

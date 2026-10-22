@@ -136,18 +136,25 @@ function Dashboard({ myTag }: { myTag: string }) {
         {/* sync */}
         <Card className="space-y-4">
           <SectionTitle>Match sync</SectionTitle>
-          <label className="flex cursor-pointer items-center justify-between gap-3">
-            <span>
-              <span className="block font-medium">Auto-save my matches</span>
-              <span className="text-xs text-muted">Every 2 min, on any page of the app</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={sync.enabled}
-              onChange={(e) => sync.setEnabled(e.target.checked)}
-              className="h-5 w-5 accent-[var(--color-win)]"
-            />
-          </label>
+          {sync.serverManaged ? (
+            <p>
+              <span className="block font-medium text-win">Saved by your server</span>
+              <span className="text-xs text-muted">Every 2 min, even with the app closed</span>
+            </p>
+          ) : (
+            <label className="flex cursor-pointer items-center justify-between gap-3">
+              <span>
+                <span className="block font-medium">Auto-save my matches</span>
+                <span className="text-xs text-muted">Every 2 min, on any page of the app</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={sync.enabled}
+                onChange={(e) => sync.setEnabled(e.target.checked)}
+                className="h-5 w-5 accent-[var(--color-win)]"
+              />
+            </label>
+          )}
           <Button
             variant="secondary"
             className="w-full"
