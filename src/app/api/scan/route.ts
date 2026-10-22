@@ -2,14 +2,16 @@
 // The iPhone shortcut posts the text of an in-match screenshot here.
 // We find the opponent, and answer with what the shortcut shows as a notification:
 //   title = their name · clan (so you can check what was read)
-//   body  = their cards
+//   body  = their deck's archetype ("Log Bait"), and your record against them
 //   image = picture of the deck
 // The Scout page also opens them (through the phone push).
+import { deckArchetype } from '@/lib/archetype';
 import { clashApi, errorResponse, normalizeTag } from '@/lib/clashApi';
 import { recentDecks } from '@/lib/deck';
 import { SYNCED_TYPES } from '@/lib/gameTypes';
 import { searchOpponents } from '@/lib/opponentSearch';
 import { push } from '@/lib/phonePush';
+import { prisma } from '@/lib/prisma';
 import { readScreenText } from '@/lib/screenText';
 import type { BattleLogEntry, CardInfo } from '@/types/battle';
 import type { PlayerProfile } from '@/types/player';
@@ -58,10 +60,21 @@ export async function POST(req: Request) {
     // open them on the Scout page too
     push(best.name, best.clanName ?? '');
 
+    // your record against them, if you've met before
+    const met = myTag
+      ? await prisma.encounter.findMany({
+          where: { myTag: normalizeTag(myTag), opponent: { tag: best.tag } },
+          select: { result: true },
+        })
+      : [];
+    const record = met.length
+      ? ` · you ${met.filter((r) => r.result === 'win').length}W ${met.filter((r) => r.result === 'loss').length}L`
+      : '';
+
     return NextResponse.json({
       found: true,
       title: `${best.name} · ${best.clanName ?? 'No clan'}`,
-      body: deck ? deck.map(cardLabel).join(', ') : 'No recent battles',
+      body: (deck ? deckArchetype(deck) : 'No recent battles') + record,
       image: deck ? deckImageUrl(req, deck) : null,
       player: { tag: best.tag, name: best.name, clan: best.clanName ?? null },
       lines,
@@ -70,9 +83,6 @@ export async function POST(req: Request) {
     return errorResponse(err);
   }
 }
-
-const cardLabel = (c: CardInfo) =>
-  c.evolutionLevel === 1 ? `Evo ${c.name}` : c.evolutionLevel === 2 ? `Hero ${c.name}` : c.name;
 
 // absolute URL, the shortcut downloads it for the notification
 function deckImageUrl(req: Request, deck: CardInfo[]) {

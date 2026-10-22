@@ -1,5 +1,6 @@
 'use client';
 
+import { deckArchetype } from '@/lib/archetype';
 import { timeAgo } from '@/lib/format';
 import { gameTypeLabel } from '@/lib/gameTypes';
 import type { Encounter } from '@/types/encounter';
@@ -72,12 +73,15 @@ export default function MatchList({
             {open && (
               <div className="grid gap-6 border-t border-border bg-bg/40 p-4 sm:grid-cols-2">
                 <div>
-                  <p className="mb-2 text-xs uppercase tracking-wide text-muted">Your deck</p>
+                  <p className="mb-2 text-xs uppercase tracking-wide text-muted">
+                    Your deck · <span className="text-accent">{deckArchetype(m.myDeck)}</span>
+                  </p>
                   <DeckDisplay cards={m.myDeck} size="sm" showLevels />
                 </div>
                 <div>
                   <p className="mb-2 text-xs uppercase tracking-wide text-muted">
-                    {m.opponent.name}’s deck
+                    {m.opponent.name}’s deck ·{' '}
+                    <span className="text-accent">{deckArchetype(m.opponentDeck)}</span>
                   </p>
                   <DeckDisplay cards={m.opponentDeck} size="sm" showLevels />
                 </div>

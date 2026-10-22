@@ -63,8 +63,8 @@ Tips:
 ## Scouting from your phone
 
 During a match, double-tap the back of your iPhone: a Shortcut screenshots the game,
-iOS reads your opponent's name and clan, and a notification shows who it found and
-their deck, with a picture of the cards. Set it up with **[docs/SHORTCUT.md](docs/SHORTCUT.md)**.
+iOS reads your opponent's name and clan, and a notification shows who it found, their
+deck type ("Log Bait", "Hog Cycle"…) and a picture of their cards. Set it up with **[docs/SHORTCUT.md](docs/SHORTCUT.md)**.
 
 ## Hosting it on a home server
 

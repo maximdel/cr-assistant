@@ -1,5 +1,6 @@
 'use client';
 
+import { deckArchetype } from '@/lib/archetype';
 import { deckKey, recentDecks } from '@/lib/deck';
 import { gameTypeLabel } from '@/lib/gameTypes';
 import type { BattleLogEntry, CardInfo } from '@/types/battle';
@@ -45,6 +46,7 @@ export default function RecentDecks({
               ) : (
                 <Pill>Also played</Pill>
               )}
+              <span className="font-semibold text-accent">{deckArchetype(d.cards)}</span>
               <span className="font-semibold">
                 {d.items.length} game{d.items.length === 1 ? '' : 's'}
               </span>

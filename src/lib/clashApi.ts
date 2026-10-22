@@ -57,6 +57,13 @@ export function errorResponse(err: unknown) {
   if (err instanceof ClashApiError) {
     return NextResponse.json({ error: err.message }, { status: err.status });
   }
+  // fetch() throws a TypeError when it can't connect at all
+  if (err instanceof TypeError && err.message === 'fetch failed') {
+    return NextResponse.json(
+      { error: "Couldn't reach the Clash Royale API, check the internet connection" },
+      { status: 503 }
+    );
+  }
   console.error(err);
   return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
 }

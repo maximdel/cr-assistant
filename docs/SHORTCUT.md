@@ -2,7 +2,7 @@
 
 During a match, one tap on the back of your phone: the Shortcut takes a screenshot,
 reads your opponent's name and clan (top left of the screen), and a notification
-shows **who it found** and **their deck**, with a picture of the cards. The Scout page
+shows **who it found**, the **type of deck** they play ("Log Bait", "Hog Cycle"…) and a picture of their cards. The Scout page
 of the app (on a tablet or computer, if you have one open) opens them too.
 
 ```
@@ -50,7 +50,7 @@ The answer looks like this:
 {
   "found": true,
   "title": "Ryu · But Destroy",
-  "body": "Evo Furnace, Golden Knight, Hero Tombstone, Barbarian Barrel, Bats, …",
+  "body": "Barrel Cycle · you 1W 0L",
   "image": "https://YOUR-SERVER/api/deck-image?deck=27000010.1,26000074,…",
   "lines": ["Ryu", "But Destroy"]
 }

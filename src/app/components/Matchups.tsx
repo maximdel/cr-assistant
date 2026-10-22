@@ -1,5 +1,6 @@
 'use client';
 
+import { deckArchetype } from '@/lib/archetype';
 import type { CardInfo } from '@/types/battle';
 import type { Encounter } from '@/types/encounter';
 import { useEffect, useState } from 'react';
@@ -80,6 +81,7 @@ export default function Matchups({ myTag, deck }: { myTag: string; deck: CardInf
               {data.myDecks.map((d, i) => (
                 <li key={i} className="flex flex-wrap items-center gap-3">
                   <DeckDisplay cards={d.cards} size="xs" />
+                  <span className="text-sm font-medium text-accent">{deckArchetype(d.cards)}</span>
                   <span className="text-sm">
                     <span className="font-semibold text-win">{d.wins}W</span> /{' '}
                     <span className="font-semibold text-loss">{d.losses}L</span>
